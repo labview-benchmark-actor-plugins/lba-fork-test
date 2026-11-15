@@ -32,16 +32,16 @@ this folder, `vagrant validate` (→ `Vagrantfile validated successfully.`).
 ## Package a base box from an existing VMware VM
 
 The base box should already have licensed LabVIEW installed. To build one from an existing VMware VM
-(e.g. `C:\VM\VIHS`):
+(e.g. `C:\VM\labview-cleanroom`):
 
 ```powershell
 # from a copy of the VM you want as the clean-room base
-vagrant package --base "VIHS" --output vihs-labview-cleanroom.box   # VMware: use the box workflow in the plugin docs
+vagrant package --base "labview-cleanroom" --output vihs-labview-cleanroom.box   # VMware: use the box workflow in the plugin docs
 vagrant box add vihs/labview-cleanroom vihs-labview-cleanroom.box
 ```
 
 (See the vagrant-vmware-desktop docs for the exact packaging flow; VMware boxes are packaged from a
-prepared `.vmx`.) Override the box name with `VIHS_CLEANROOM_BOX`.
+prepared `.vmx`.) Override the box name with `CLEANROOM_BOX`.
 
 **For a self-contained box** (no host repo / SMB / credential prompt at `vagrant up`), bake the collab-cli
 source into the box so the provisioner builds from it -- `bootstrap.ps1` prefers a box-baked
@@ -61,7 +61,7 @@ tar -cf selfcontained.box -C C:\stage metadata.json <name>.vmx <name>.nvram disk
 vagrant box add vihs/labview-cleanroom-sc selfcontained.box
 ```
 
-Proven end to end: a fresh `vagrant up` (`VIHS_CLEANROOM_BOX=vihs/labview-cleanroom-sc`, `VIHS_CLEANROOM_NO_SYNC=1`)
+Proven end to end: a fresh `vagrant up` (`CLEANROOM_BOX=vihs/labview-cleanroom-sc`, `CLEANROOM_NO_SYNC=1`)
 clones the box, boots, builds `lbabus` from the baked `C:\cleanroom-src`, and reaches `selfcheck: PASS` +
 `AGENTS.md` materialized with **no host dependency**. Build-on-bootstrap is preserved -- the box carries its
 own pinned source.
@@ -70,7 +70,7 @@ own pinned source.
 
 ```powershell
 cd cleanroom
-$env:VIHS_CLEANROOM_BOX = "vihs/labview-cleanroom"   # your packaged box
+$env:CLEANROOM_BOX = "vihs/labview-cleanroom"   # your packaged box
 vagrant up --provider vmware_desktop
 ```
 
@@ -89,7 +89,7 @@ file as ANSI, so a non-ASCII byte (e.g. an em-dash) corrupts and breaks the pars
 above-pin), and `AGENTS.md` materialized in the guest home.
 
 For an **unattended / self-contained** boot (no host repo, no SMB credential prompt) set
-`VIHS_CLEANROOM_NO_SYNC=1` to disable the synced folder; the provisioner then builds from a **box-baked**
+`CLEANROOM_NO_SYNC=1` to disable the synced folder; the provisioner then builds from a **box-baked**
 source at `C:\cleanroom-src\tools\collab-cli` (bake it in before `vagrant package` -- see "Package a base
 box" above), falling back to the SMB synced folder (`C:\vagrant-src`) on a dev host that syncs its tree.
 
@@ -97,10 +97,10 @@ box" above), falling back to the SMB synced folder (`C:\vagrant-src`) on a dev h
 
 | var | default | meaning |
 |-----|---------|---------|
-| `VIHS_CLEANROOM_BOX` | `vihs/labview-cleanroom` | operator-supplied base box (licensed LabVIEW) |
-| `VIHS_CLEANROOM_MEM` | `8192` | guest RAM (MB) |
-| `VIHS_CLEANROOM_CPUS` | `4` | guest vCPUs |
-| `VIHS_CLEANROOM_NO_SYNC` | (unset) | when set, disable the SMB synced folder (unattended boot, no host credential prompt); pre-stage source at `C:\vagrant-src` |
+| `CLEANROOM_BOX` | `vihs/labview-cleanroom` | operator-supplied base box (licensed LabVIEW) |
+| `CLEANROOM_MEM` | `8192` | guest RAM (MB) |
+| `CLEANROOM_CPUS` | `4` | guest vCPUs |
+| `CLEANROOM_NO_SYNC` | (unset) | when set, disable the SMB synced folder (unattended boot, no host credential prompt); pre-stage source at `C:\vagrant-src` |
 
 ## LINUX / VirtualBox parity (`Vagrantfile.virtualbox`)
 
@@ -112,7 +112,7 @@ type (`virtualbox` Guest-Additions instead of `smb`) differ. Validated on Vagran
 
 ```sh
 cd cleanroom
-VAGRANT_VAGRANTFILE=Vagrantfile.virtualbox VIHS_CLEANROOM_BOX=vihs/labview-cleanroom \
+VAGRANT_VAGRANTFILE=Vagrantfile.virtualbox CLEANROOM_BOX=vihs/labview-cleanroom \
   vagrant up --provider virtualbox
 ```
 

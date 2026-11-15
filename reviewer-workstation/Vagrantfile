@@ -11,8 +11,8 @@
 #   VAGRANT_CWD=reviewer-workstation vagrant up --provider vmware_desktop  # Windows/VMware (WIN lane)
 #
 # Box per provider (both are maintainer-held Win+LabVIEW boxes; no public LabVIEW box by design):
-#   virtualbox     -> actor/win11-labview2026  (labview-benchmark-actor golden box; override VIHS_REVIEWER_BOX)
-#   vmware_desktop -> vihs/labview-cleanroom   (labview-benchmark-actor cleanroom box; override VIHS_REVIEWER_BOX_VMWARE)
+#   virtualbox     -> actor/win11-labview2026  (labview-benchmark-actor golden box; override REVIEWER_BOX)
+#   vmware_desktop -> vihs/labview-cleanroom   (labview-benchmark-actor cleanroom box; override REVIEWER_BOX_VMWARE)
 # Reviewers without a box build one per the docs (BYO). LabVIEW is installed in the VirtualBox box, but NI
 # activation is per imported VM hardware identity; each reviewer must activate that disposable instance through
 # an NI-supported mechanism before TC-09. Never treat source-VM activation as portable box evidence.
@@ -28,7 +28,7 @@ Vagrant.configure("2") do |config|
   lba_vm_hostname = "actor" if lba_vm_hostname.empty?
 
   # Default: the labview-benchmark-actor golden box (VirtualBox). Overridden per-provider below.
-  config.vm.box = ENV.fetch("VIHS_REVIEWER_BOX", "actor/win11-labview2026")
+  config.vm.box = ENV.fetch("REVIEWER_BOX", "actor/win11-labview2026")
 
   config.vm.hostname = lba_vm_hostname
   config.vm.communicator = "winrm"
@@ -38,10 +38,10 @@ Vagrant.configure("2") do |config|
   # NOT match this box: WinRM then fails with WinRMAuthorizationError, and the repeated failed logons LOCK the
   # guest account -- taking down BOTH WinRM (`vagrant upload` / `vagrant winrm`) AND VBoxManage guestcontrol
   # (VERR_UNRESOLVED_ERROR: the session can no longer even be established). A BYO / repackaged box with
-  # different creds overrides via env: VIHS_REVIEWER_WINRM_USER / _PASSWORD / _TRANSPORT.
-  config.winrm.username  = ENV.fetch("VIHS_REVIEWER_WINRM_USER", "vagrant")
-  config.winrm.password  = ENV.fetch("VIHS_REVIEWER_WINRM_PASSWORD", "Vagrant1234!")
-  config.winrm.transport = ENV["VIHS_REVIEWER_WINRM_TRANSPORT"].to_sym if ENV["VIHS_REVIEWER_WINRM_TRANSPORT"]
+  # different creds overrides via env: REVIEWER_WINRM_USER / _PASSWORD / _TRANSPORT.
+  config.winrm.username  = ENV.fetch("REVIEWER_WINRM_USER", "vagrant")
+  config.winrm.password  = ENV.fetch("REVIEWER_WINRM_PASSWORD", "Vagrant1234!")
+  config.winrm.transport = ENV["REVIEWER_WINRM_TRANSPORT"].to_sym if ENV["REVIEWER_WINRM_TRANSPORT"]
   config.winrm.timeout = 1800
 
   # No host folder sync needed: provisioning pulls the .vsix from the GitHub Release.
@@ -50,18 +50,18 @@ Vagrant.configure("2") do |config|
   # --- VirtualBox (LINUX lane; the golden box is a VirtualBox box; validated on an Ubuntu host) ---
   config.vm.provider "virtualbox" do |vb|
     vb.gui    = true
-    vb.memory = ENV.fetch("VIHS_REVIEWER_MEM", "8192")
-    vb.cpus   = ENV.fetch("VIHS_REVIEWER_CPUS", "4")
+    vb.memory = ENV.fetch("REVIEWER_MEM", "8192")
+    vb.cpus   = ENV.fetch("REVIEWER_CPUS", "4")
     vb.name   = lba_vm_name
     vb.customize ["modifyvm", :id, "--vram", "128"]
   end
 
   # --- VMware (WIN lane; defaults to the cleanroom VMware box; WIN owns + refines this block) ---
   config.vm.provider "vmware_desktop" do |v, override|
-    override.vm.box = ENV.fetch("VIHS_REVIEWER_BOX_VMWARE", "vihs/labview-cleanroom")
+    override.vm.box = ENV.fetch("REVIEWER_BOX_VMWARE", "vihs/labview-cleanroom")
     v.gui = true
-    v.vmx["memsize"]     = ENV.fetch("VIHS_REVIEWER_MEM", "8192")
-    v.vmx["numvcpus"]    = ENV.fetch("VIHS_REVIEWER_CPUS", "4")
+    v.vmx["memsize"]     = ENV.fetch("REVIEWER_MEM", "8192")
+    v.vmx["numvcpus"]    = ENV.fetch("REVIEWER_CPUS", "4")
     v.vmx["displayName"] = lba_vm_name
     # Pin the NIC PCI slot the cleanroom box ships with: Vagrant auto-applies it today but warns it will
     # stop in a future release, which could break guest networking/WinRM. Set it explicitly to future-proof.
@@ -84,9 +84,9 @@ Vagrant.configure("2") do |config|
   config.vm.provision "reviewer-provision", type: "shell",
     path: "provision.ps1", privileged: true,
     env: {
-      "VIHS_REVIEWER_EXT_TAG"    => ENV.fetch("VIHS_REVIEWER_EXT_TAG", "latest"),
-      "VIHS_REVIEWER_REPO"       => ENV.fetch("VIHS_REVIEWER_REPO", "svelderrainruiz/labview-benchmark-actor"),
-      "VIHS_REVIEWER_LBABUS_TAG" => ENV.fetch("VIHS_REVIEWER_LBABUS_TAG", "latest"),
+      "REVIEWER_EXT_TAG"    => ENV.fetch("REVIEWER_EXT_TAG", "latest"),
+      "REVIEWER_REPO"       => ENV.fetch("REVIEWER_REPO", "svelderrainruiz/labview-benchmark-actor"),
+      "REVIEWER_LBABUS_TAG" => ENV.fetch("REVIEWER_LBABUS_TAG", "latest"),
     }
 
   # On-demand reviewer smoke-check (NEVER auto-runs -- invoke explicitly with

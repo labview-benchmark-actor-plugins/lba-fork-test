@@ -11,6 +11,10 @@ const defaultMetadata = join(repoRoot, 'cleanroom', 'ubuntu-labview', 'productio
 const defaultProof = join(repoRoot, 'cleanroom', 'ubuntu-labview', 'production-golden-base-proof.json');
 const defaultManifest = join(repoRoot, 'cleanroom', 'ubuntu-labview', 'cleanroom-manifest.json');
 const defaultLbabusProvisioner = join(repoRoot, 'cleanroom', 'ubuntu-labview', 'provision-lbabus-fromsource.sh');
+const defaultComponents = join(repoRoot, 'release-components.json');
+
+// The clean room builds lbabus from its own repository (ADR-0088) at the release this extension pins.
+export const LBABUS_SOURCE_REPO = 'https://github.com/svelderrainruiz/lbabus';
 
 export function sha256(value) {
   const canonical = typeof value === 'string' ? value.replace(/\r\n?/g, '\n') : value;
@@ -90,7 +94,7 @@ export function validateGoldenBoxDefinition({ metadata, vagrantfile }) {
   return { ok: failures.length === 0, failures };
 }
 
-export function validateLbabusProvisioningPin({ manifest, provisioner }) {
+export function validateLbabusProvisioningPin({ manifest, provisioner, components }) {
   const failures = [];
   if (manifest?.schema !== 'labview-benchmark-actor/cleanroom-provisioning-manifest-v1') {
     failures.push('cleanroom manifest schema is invalid');
@@ -101,6 +105,15 @@ export function validateLbabusProvisioningPin({ manifest, provisioner }) {
   const runtimeIdentifier = manifest?.lbabus?.runtime_identifier;
   for (const [name, value] of Object.entries({ sourceRepo, sourceRef, sdkPackage, runtimeIdentifier })) {
     if (!value) failures.push(`cleanroom manifest lbabus ${name} is missing`);
+  }
+  if (sourceRepo && sourceRepo !== LBABUS_SOURCE_REPO) {
+    failures.push(`cleanroom manifest lbabus source repository must be ${LBABUS_SOURCE_REPO}`);
+  }
+  const lbabusVersion = components?.lbabus;
+  if (!/^\d+\.\d+\.\d+$/.test(lbabusVersion ?? '')) {
+    failures.push('release-components lbabus version is missing');
+  } else if (sourceRef && sourceRef !== `v${lbabusVersion}`) {
+    failures.push(`cleanroom manifest lbabus source_ref ${sourceRef} must be v${lbabusVersion} (release-components.json lbabus)`);
   }
   const requiredDefaults = [
     ['source repository', `REPO_URL="\${LBABUS_REPO_URL:-${sourceRepo}}"`],
@@ -206,6 +219,7 @@ function main() {
   report('ubuntu golden lbabus provisioning pin', validateLbabusProvisioningPin({
     manifest,
     provisioner: lbabusProvisioner,
+    components: JSON.parse(readFileSync(defaultComponents, 'utf8')),
   }));
   if (existsSync(defaultProof)) {
     report('ubuntu production golden base proof', validateGoldenBaseProof(JSON.parse(readFileSync(defaultProof, 'utf8')), {

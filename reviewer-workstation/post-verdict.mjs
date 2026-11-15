@@ -5,7 +5,7 @@
 // Reads a collected verdict record { verdict, signOff }, builds the SEMANTIC lbabus post via the same gated
 // builder the extension uses (buildVerdictBusPost: PASS->RESOLVED / CHANGES->REFINE / FAIL->BLOCKED), and
 // announces it with `lbabus net send ... --message-file <verdict>` to the configured peer(s)
-// (VIHS_COLLAB_NET_HOSTS), else a graceful no-op (--skip-if-no-peer), so the FULL signed verdict JSON is the
+// (COLLAB_NET_HOSTS), else a graceful no-op (--skip-if-no-peer), so the FULL signed verdict JSON is the
 // message body. Runnable by hand; the extension also announces from the VM. The GitHub-Discussion transport
 // opt-out was removed off-Discussions step 7.
 //
@@ -34,10 +34,10 @@ if (!verdictPath) {
 const record = JSON.parse(readFileSync(verdictPath, 'utf8'));
 const post = buildVerdictBusPost(record);
 // Net-only announcement (LBA-REQ-066, ADR-0046): the verdict rides the live-only lbabus net TCP bus via `net send`
-// with the SAME semantic type (RESOLVED/REFINE/BLOCKED) to the configured peer(s) (VIHS_COLLAB_NET_HOSTS), else a
+// with the SAME semantic type (RESOLVED/REFINE/BLOCKED) to the configured peer(s) (COLLAB_NET_HOSTS), else a
 // graceful no-op (--skip-if-no-peer). The net envelope has no priority/ref (those live inside the verdict JSON).
 // The GitHub-Discussion transport opt-out was removed off-Discussions step 7.
-const netHosts = (process.env.VIHS_COLLAB_NET_HOSTS || '').trim();
+const netHosts = (process.env.COLLAB_NET_HOSTS || '').trim();
 const args = ['net', 'send'];
 if (netHosts) { args.push('--hosts', netHosts); } else { args.push('--skip-if-no-peer'); }
 args.push('--type', post.type, '--task', post.task, '--message-file', verdictPath);

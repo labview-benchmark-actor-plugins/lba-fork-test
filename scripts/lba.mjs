@@ -983,9 +983,10 @@ const SELFTEST = [
   }],
   ['LabVIEW known-answer adapter requires the validated activated verdict', () => read('experiments/mesh-fulfillment/runLabviewKnownAnswer.mjs').includes('if (!validation.activated)')],
   ['every governance-surface file exists', () => GOVERNANCE_SURFACES.every((s) => existsSync(join(repoRoot, s.file)))],
-  ['Ubuntu golden lbabus source defaults match the cleanroom manifest', () => validateLbabusProvisioningPin({
+  ['Ubuntu golden lbabus source defaults match the cleanroom manifest and the released lbabus pin', () => validateLbabusProvisioningPin({
     manifest: JSON.parse(read('cleanroom/ubuntu-labview/cleanroom-manifest.json')),
     provisioner: read('cleanroom/ubuntu-labview/provision-lbabus-fromsource.sh'),
+    components: JSON.parse(read('release-components.json')),
   }).ok],
   ['capture preflight selects an active Xorg display when all native dependencies exist', () => {
     const result = capturePreflight({ platform: 'linux', sessionType: 'x11', display: ':0', binaries: { ffmpeg: true, xdpyinfo: true }, labviewPresent: true });

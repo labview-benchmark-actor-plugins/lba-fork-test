@@ -90,7 +90,7 @@ await check('comms-only-driver-sees-run-data-only', async () => {
   seenPrompts.length = 0;
   await compareOverCorpus(CORPUS, mockDrive);
   assert(seenPrompts.length === 1, 'the driver must be handed exactly one prompt');
-  const busMarkers = ['vihs-collab-msg', 'ackOf', 'senderId'];
+  const busMarkers = ['bus-msg@1', 'ackOf', 'senderId'];
   for (const prompt of seenPrompts) {
     assert(typeof prompt === 'string' && prompt.includes('actor vm-a'), 'prompt must be derived from run data');
     assert(!busMarkers.some((m) => prompt.includes(m)), 'no coordination-bus field may reach the ollama driver');

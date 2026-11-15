@@ -7,12 +7,12 @@
 #
 # Bring-up (Linux host, operator-supplied licensed-LabVIEW box):
 #   cd cleanroom
-#   VAGRANT_VAGRANTFILE=Vagrantfile.virtualbox VIHS_CLEANROOM_BOX=vihs/labview-cleanroom \
+#   VAGRANT_VAGRANTFILE=Vagrantfile.virtualbox CLEANROOM_BOX=vihs/labview-cleanroom \
 #     vagrant up --provider virtualbox
 
 Vagrant.configure("2") do |config|
   # Operator-supplied base box with licensed LabVIEW (no public default — licensing).
-  config.vm.box = ENV.fetch("VIHS_CLEANROOM_BOX", "vihs/labview-cleanroom")
+  config.vm.box = ENV.fetch("CLEANROOM_BOX", "vihs/labview-cleanroom")
 
   config.vm.hostname = "vihs-cleanroom"
   config.vm.communicator = "winrm"           # Windows LabVIEW guest
@@ -26,8 +26,8 @@ Vagrant.configure("2") do |config|
 
   config.vm.provider "virtualbox" do |vb|
     vb.gui    = false
-    vb.memory = ENV.fetch("VIHS_CLEANROOM_MEM", "8192")
-    vb.cpus   = ENV.fetch("VIHS_CLEANROOM_CPUS", "4")
+    vb.memory = ENV.fetch("CLEANROOM_MEM", "8192")
+    vb.cpus   = ENV.fetch("CLEANROOM_CPUS", "4")
     vb.name   = "vihs-cleanroom"
     vb.customize ["modifyvm", :id, "--firmware", "efi"]
   end

@@ -9,7 +9,7 @@
 
 Off-Discussions steps 1–6 (ADR-0040..0045) made `net` the default everywhere with GitHub Discussion a legacy
 opt-out. But the **product surface** still carried the Discussion arms: the extension's `busPostArgs` + the
-`busTransport` selection + the `post`/`poll` argv, the MCP tools' `VIHS_COLLAB_TRANSPORT` selection, and
+`busTransport` selection + the `post`/`poll` argv, the MCP tools' `COLLAB_TRANSPORT` selection, and
 `post-verdict.mjs`'s `post ... --priority/--ref` branch. With `net` proven live (ADR-0039) and the default
 (ADR-0045), the Discussion opt-out is dead weight on the surface users and agents actually touch.
 
@@ -25,8 +25,8 @@ delicate change that deserves its own PR.
 - **Collapse every product consumer to net-only:**
   - **Extension** (`src/extension.ts`): remove `busPostArgs`; `busConfig()` returns `{ netHosts, netLog }`;
     **Poll Bus** → `net poll`, **Post Note** → `net send`, the verdict announce → `busSendArgs` unconditionally.
-  - **MCP** (`src/mcp/*`): `busEnvFromConfig` maps only `VIHS_COLLAB_NET_HOSTS` / `VIHS_COLLAB_NET_LOG`;
-    `pollBusArgs` / `postNoteArgs` are net-only; no `VIHS_COLLAB_TRANSPORT`.
+  - **MCP** (`src/mcp/*`): `busEnvFromConfig` maps only `COLLAB_NET_HOSTS` / `COLLAB_NET_LOG`;
+    `pollBusArgs` / `postNoteArgs` are net-only; no `COLLAB_TRANSPORT`.
   - **`reviewer-workstation/post-verdict.mjs`**: `net send` only — no Discussion branch, no `--priority`/`--ref`.
 - **The graceful no-op (ADR-0045) is preserved** — no peer → `--skip-if-no-peer`; no receive-log → `net poll`
   exits 0.

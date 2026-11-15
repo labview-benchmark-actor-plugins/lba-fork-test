@@ -14,8 +14,8 @@ Step 4 makes it transport-selectable too.
 
 ## Decision
 
-- **`post-verdict.mjs` selects the transport** from `VIHS_COLLAB_TRANSPORT` (discussion default | net) +
-  `VIHS_COLLAB_NET_HOSTS`: under `net` it emits `net send --hosts <peers> --type <RESOLVED/…> --task
+- **`post-verdict.mjs` selects the transport** from `COLLAB_TRANSPORT` (discussion default | net) +
+  `COLLAB_NET_HOSTS`: under `net` it emits `net send --hosts <peers> --type <RESOLVED/…> --task
   <release-task> --message-file <verdict>` (the net envelope has no priority/ref — those live inside the
   signed verdict JSON); else the Discussion `post` argv (unchanged). `--print-args` / `--dry-run` / post all
   honor it.
@@ -32,7 +32,7 @@ This is requirement **LBA-REQ-063**.
 ## Consequences
 
 - **A reviewer can announce a verdict over TCP.** e.g. the reviewer VM runs `post-verdict.mjs` with
-  `VIHS_COLLAB_TRANSPORT=net` + `VIHS_COLLAB_NET_HOSTS=10.0.2.2` to `net send` the signed verdict to the host —
+  `COLLAB_TRANSPORT=net` + `COLLAB_NET_HOSTS=10.0.2.2` to `net send` the signed verdict to the host —
   the scripted form of the live drive already proven (ADR-0039).
 - **The release workflow is untouched** (Discussion default); its off-Discussions change is a deliberate,
   operator-gated follow-up.

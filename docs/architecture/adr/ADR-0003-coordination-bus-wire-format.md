@@ -48,7 +48,7 @@ fails closed on a corrupt or hostile length.
   `CLAIM | ACK | HANDOFF | DONE | PROGRESS | NOTE` (the GitHub-Discussion
   replacement set). There is no run-data or image-fetch verb (see §5); a
   run-complete signal is a bare `DONE`/`NOTE` notice with no run payload.
-- The shape mirrors `vihs-collab-msg@v1`, so the coordination model is preserved
+- The shape mirrors the earlier Discussion-era collab message, so the coordination model is preserved
   across the transport change (AD-7).
 
 **3. Ordering and late-join — an append-only session log at the leader.** The

@@ -12,14 +12,14 @@ What is proven, cross-VM (see [receipt.json](receipt.json) for a captured run):
 | Presence | UDP beacons (`task:presence`) | actor-a receives 2× `ACTOR-B present` |
 | Claim / handoff / done | ordered, reliable TCP | actor-a receives `CLAIM`, `HANDOFF`, `DONE` (`task:benchmark`) |
 | Acknowledgement | TCP `--echo` reply | actor-b receives 3× `ACK … ackOf:<id>` from `ACTOR-A` |
-| Unique identity | `VIHS_COLLAB_AGENT` | frames carry `ACTOR-A` / `ACTOR-B` senders |
+| Unique identity | `COLLAB_AGENT` | frames carry `ACTOR-A` / `ACTOR-B` senders |
 | Comms-only | — | only coordination envelopes cross the wire (no run data / frames / images) |
 
 ## Layout
 
 - [Vagrantfile](Vagrantfile) — two actors (`actor-a`, `actor-b`) on a shared host-only
   `private_network`, box `vihs/labview-cleanroom-sc`, no synced folder, no provisioner
-  (comms-only). Knobs: `VIHS_CLEANROOM_BOX`, `VIHS_TOPO_MEM` (default 2048), `VIHS_TOPO_CPUS`.
+  (comms-only). Knobs: `CLEANROOM_BOX`, `TOPO_MEM` (default 2048), `TOPO_CPUS`.
 - [run-topology.ps1](run-topology.ps1) — host-side driver: discovers the VM IPs, opens the
   collector firewall, runs the collector listener, fires the sender, asserts every signal
   above, and writes [receipt.json](receipt.json).

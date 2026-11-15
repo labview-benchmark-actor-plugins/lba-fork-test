@@ -41,7 +41,7 @@ chmod 0755 /usr/local/bin/lba-mesh-actor.sh
 
 # 2) this node's identity (self is auto-filtered from peers by mesh-actor.sh via the actor name).
 cat > /etc/lba-mesh-actor <<ENV
-VIHS_COLLAB_AGENT=$MESH_AGENT
+COLLAB_AGENT=$MESH_AGENT
 LBABUS=/usr/local/bin/lbabus
 MESH_PEERS=$MESH_PEER_IPS
 MESH_BIND=$MESH_SELF_IP

@@ -17,10 +17,10 @@ UDP_PORT="${UDP_PORT:-47421}"
 TIMEOUT_SEC="${TIMEOUT_SEC:-25}"
 UDP_BEACONS="${UDP_BEACONS:-3}"
 
-# The bus envelope stamps the SENDER identity from VIHS_COLLAB_AGENT; pin it so the loopback beacon we hear
+# The bus envelope stamps the SENDER identity from COLLAB_AGENT; pin it so the loopback beacon we hear
 # back attributes to a known actor (the golden's /etc/lba-mesh-actor sets this for the service, not our shell).
-actor="${VIHS_COLLAB_AGENT:-$(hostname)}"
-export VIHS_COLLAB_AGENT="$actor"
+actor="${COLLAB_AGENT:-$(hostname)}"
+export COLLAB_AGENT="$actor"
 
 # Run the CLI: a framework .dll via `dotnet`; a self-contained single-file binary directly.
 run_lbabus() { case "$LBABUS" in *.dll) dotnet "$LBABUS" "$@" ;; *) "$LBABUS" "$@" ;; esac; }

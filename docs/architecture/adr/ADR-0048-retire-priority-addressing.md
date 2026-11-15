@@ -31,7 +31,7 @@ live-only `net` `BusEnvelope` (`bus-msg@1`: `Schema` / `SessionId` / `SenderId` 
 - **`lbabus` coordination is net-only with no message priority/addressing** — a simpler envelope, consistent
   with the live-only design. The `net` `Types` set keeps its first-class semantic verdict types
   (RESOLVED/REFINE/BLOCKED, ADR-0039); those are unrelated to the retired priority/addressing.
-- **The capability + its cross-plane back-read-compat proof** (flat-scalar additive fields, `vihs-collab-msg@v1`,
+- **The capability + its cross-plane back-read-compat proof** (flat-scalar additive fields on the Discussion-era collab message,
   bus finding 17812593) remain in git history if a `net` equivalent is ever wanted.
 - **Deferred (a small follow-up):** trim the ci mock's now-vestigial GraphQL discussion + release
   handlers/fixtures (`tools/collab-cli/ci/LbaBus.Ci.Mock`) + the `ci/README.md` fixture table — harmless dead

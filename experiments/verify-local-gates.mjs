@@ -29,6 +29,7 @@ import { correlateDualStream } from './mprr-ring/mprrDualPacket.mjs';
 import { summarizeViAnalyzerReport } from './vi-analyzer/viAnalyzerResult.mjs';
 import { validateViAnalyzerReport } from './vi-analyzer/validate-vi-analyzer-report.mjs';
 import { checkVsixLinks, REQUIRED_LINKS } from '../scripts/verify-vsix-links.mjs';
+import { validateLbabusProvisioningPin } from '../scripts/verify-ubuntu-golden-box.mjs';
 import { parseAsciiReport, parseSummary } from './vi-analyzer/parse-vi-analyzer-ascii.mjs';
 import { verifyManifest as verifyExtensionAgentsManifest, agentsSha256, readManifest as readExtensionAgentsManifest, AGENTS_MD as EXTENSION_AGENTS_MD } from '../scripts/agentsManifest.mjs';
 import { normalizeZipTimestamps } from '../scripts/normalize-vsix.mjs';
@@ -691,15 +692,64 @@ check('cleanroom-provisioner-scripts-pure-ascii', () => {
 });
 
 // Typed mesh actors must send only to listener-capable peers and wait only for emitter-capable peers.
+// The worker selftest ships with the vendored lbabus mirror (ADR-0088); this repository owns the mesh
+// Vagrantfile, so its typed-peer wiring is asserted here rather than in the vendored script.
 // Bash is available in Linux CI and local WSL; Windows runners may not expose it as an executable.
 check('mesh-typed-peer-routing', () => {
+  const vagrantfile = readFileSync(join(pkgRoot, 'cleanroom', 'ubuntu-labview', 'mesh', 'Vagrantfile'), 'utf8');
+  const wiring = [
+    'Environment=MESH_LISTENERS=#{listeners}',
+    'Environment=MESH_EMITTERS=#{emitters}',
+    'def normalized_mesh_node_type(actor)',
+    'normalized_mesh_node_type(x)',
+  ];
+  for (const marker of wiring) assert(vagrantfile.includes(marker), `mesh Vagrantfile lost typed-peer wiring: ${marker}`);
   try {
     execFileSync('bash', ['tools/collab-cli/ci/mesh-actor-typed-peers.selftest.sh'], { cwd: pkgRoot, stdio: 'pipe' });
   } catch (error) {
-    if (error.code === 'ENOENT') return { skipped: 'bash is unavailable on this host' };
+    if (error.code === 'ENOENT') return { skipped: 'bash is unavailable on this host', vagrantfileWiring: `${wiring.length}/${wiring.length}` };
     throw error;
   }
-  return { selftest: 'mesh-actor-typed-peers 3/3', proves: 'source targets listeners; listeners await emitters; empty typed lists remain empty' };
+  return { selftest: 'mesh-actor-typed-peers 3/3', vagrantfileWiring: `${wiring.length}/${wiring.length}`, proves: 'source targets listeners; listeners await emitters; empty typed lists remain empty; the mesh Vagrantfile wires typed listener/emitter lists' };
+});
+
+// The Ubuntu clean room builds lbabus from source on first boot. Its pin must be the lbabus release this
+// extension vendors (release-components.json), cut in svelderrainruiz/lbabus (ADR-0088), so a mesh never runs
+// a bus whose environment contract differs from the extension's (a pre-0.16.0 bus reads only the old prefixed names).
+check('cleanroom-lbabus-pin-matches-release', () => {
+  const manifest = readJson('cleanroom/ubuntu-labview/cleanroom-manifest.json');
+  const provisioner = readFileSync(join(pkgRoot, 'cleanroom', 'ubuntu-labview', 'provision-lbabus-fromsource.sh'), 'utf8');
+  const components = readJson('release-components.json');
+  const committed = validateLbabusProvisioningPin({ manifest, provisioner, components });
+  assert(committed.ok, `clean-room lbabus pin: ${committed.failures.join('; ')}`);
+  const stale = validateLbabusProvisioningPin({ manifest, provisioner, components: { ...components, lbabus: '0.0.0' } });
+  assert(!stale.ok, 'clean-room pin check must fail closed when release-components lbabus differs');
+  const vagrantfile = readFileSync(join(pkgRoot, 'cleanroom', 'ubuntu-labview', 'mesh', 'Vagrantfile'), 'utf8');
+  assert(vagrantfile.includes('LBABUS_SOURCE_REF[/\\Av(\\d+\\.\\d+\\.\\d+)\\z/, 1]'), 'mesh Vagrantfile must derive the lbabus version from a vX.Y.Z tag');
+  return { sourceRepo: manifest.lbabus.source_repo, sourceRef: manifest.lbabus.source_ref, lbabus: components.lbabus };
+});
+
+// The mesh lifecycle (provision-cycle-v2.ps1) validates its receipt, classifies drift, and parses the lbabus tag
+// from the clean-room pin. Its self-test covers both the lbabus vX.Y.Z tag and legacy collab-cli-vX.Y.Z receipts.
+// PowerShell 7 is on GitHub-hosted Linux and Windows runners; a host without it skips.
+check('mesh-provision-cycle-selftest', () => {
+  let output;
+  try {
+    output = execFileSync('pwsh', ['-NoProfile', '-NonInteractive', '-File', join(pkgRoot, 'cleanroom', 'ubuntu-labview', 'mesh', 'provision-cycle-v2.ps1'), '-SelfTest'], { cwd: pkgRoot, stdio: 'pipe' }).toString();
+  } catch (error) {
+    if (error.code === 'ENOENT') return { skipped: 'pwsh is unavailable on this host' };
+    throw new Error(`provision-cycle-v2.ps1 -SelfTest failed: ${String(error.stderr || error.stdout || error.message).trim().slice(0, 400)}`);
+  }
+  assert(/self-test passed/.test(output), 'provision-cycle-v2.ps1 -SelfTest did not report a pass');
+  return { selftest: 'provision-cycle-v2 -SelfTest', proves: 'receipts with vX.Y.Z and legacy collab-cli-vX.Y.Z tags validate; tamper is rejected; drift is classified' };
+});
+
+// DoD exit criterion 3 (traceability): every SRS requirement has an RTM row, and no RTM row claims Proven
+// without resolvable evidence. This ran in the retired collab-cli ci-reqs Docker stage before lbabus moved
+// to its own repository (ADR-0088); it now runs in this repository's own gate suite.
+check('reqs-coverage-ledger', () => {
+  execFileSync(process.execPath, [join(here, 'reqs-coverage', 'verify-reqs-coverage.mjs')], { stdio: 'pipe' });
+  return { verifier: 'reqs-coverage/verify-reqs-coverage.mjs', rings: ['ring-1 orphan/coverage', 'ring-2 Proven-cannot-lie'] };
 });
 
 // 14. The clean-room bootstrap installs its toolchain winget-free. `winget` is an MSIX app-execution alias
@@ -1286,7 +1336,7 @@ check('reviewer-workstation-keyless-verify-wired', () => {
   assert(!identity.test(signer('refs/heads/feature/x')) && !identity.test('https://github.com/LabVIEW-Community-CI-CD/labview-benchmark-actor/.github/workflows/extension-release.yml@refs/heads/main'),
     'the keyless identity must reject other refs and the retired owner');
   const vagrantfile = readFileSync(join(pkgRoot, 'reviewer-workstation', 'Vagrantfile'), 'utf8');
-  assert(vagrantfile.includes(`ENV.fetch("VIHS_REVIEWER_REPO", "${repoPath}")`), 'reviewer provisioning must download releases from the canonical repository by default');
+  assert(vagrantfile.includes(`ENV.fetch("REVIEWER_REPO", "${repoPath}")`), 'reviewer provisioning must download releases from the canonical repository by default');
   assert(/token\.actions\.githubusercontent\.com/.test(norm), 'the cosign verify must pin the GitHub Actions OIDC issuer');
   const verifyAt = norm.indexOf('Assert-VsixKeylessSignature -ExtTag');
   const installAt = norm.indexOf('Install-ExtensionForInteractiveUser $vsix');
@@ -1651,6 +1701,43 @@ check('release-component-versioning', () => {
   assert(releaseCli.includes("purpose: 'quorum'") && releaseCli.includes('no quorum key enrolled'), 'signing readiness is not version/quorum scoped');
   assert(experimentGovernance.version === versions.experimentGovernance, 'experiment-governance version drifted');
   return { extension: versions.extension, agents: versions.agents, lbabus: versions.lbabus, humanTasks: versions.humanTasks };
+});
+
+check('lbabus-vendored-mirror', () => {
+  // ADR-0088: tools/collab-cli is lbabus's tagged release tree, byte for byte, plus this repository's
+  // release-governance files. Compared through the index, so a checkout's line endings cannot matter.
+  const pin = readJson(join('tools', 'lbabus-vendor.json'));
+  const versions = readJson('release-components.json');
+  assert(pin.schema === 'labview-benchmark-actor/lbabus-vendor@1' && pin.repository === 'https://github.com/svelderrainruiz/lbabus', 'the lbabus vendor pin must name the lbabus repository');
+  assert(pin.tag === `v${versions.lbabus}` && /^[0-9a-f]{40}$/.test(pin.commit), 'the vendored lbabus tag must match the lbabus version in release-components.json');
+  const governance = new Set(['release-agreement.json', 'reviewer-allowlist.json', 'record-release-agreement.mjs', 'record-release-agreement.selftest.mjs',
+    'verify-composite-release.mjs', 'verify-release-agreement.mjs', 'verify-visual-review.mjs'].map((f) => `tools/collab-cli/${f}`));
+  const index = new Map(execFileSync('git', ['ls-files', '-s', '--', 'tools/collab-cli'], { cwd: pkgRoot, encoding: 'utf8' })
+    .split('\n').filter(Boolean).map((line) => { const [meta, path] = line.split('\t'); const [mode, blob] = meta.split(' '); return [path, { mode, blob }]; }));
+  const pinned = Object.entries(pin.files);
+  assert(pinned.length > 0, 'the lbabus vendor pin lists no files');
+  for (const [path, want] of pinned) {
+    const have = index.get(path);
+    assert(have && have.blob === want.blob && have.mode === want.mode, `${path} differs from lbabus ${pin.tag}`);
+  }
+  const extra = [...index.keys()].filter((path) => !pin.files[path] && !governance.has(path));
+  assert(extra.length === 0, `tools/collab-cli has files that are not in lbabus ${pin.tag}: ${extra.join(', ')}`);
+  return { tag: pin.tag, commit: pin.commit.slice(0, 9), vendored: pinned.length, governance: governance.size };
+});
+
+check('no-vihs-prefix', () => {
+  // #63: the vi-history-suite prefix and the Discussion-era message name are gone. The pattern is assembled so this
+  // file does not match itself. Lowercase infrastructure names (Vagrant boxes, VM names) are tracked in #66.
+  const prefix = ['V', 'I', 'H', 'S'].join('');
+  const pattern = `${prefix}|${prefix.toLowerCase()}-collab-msg`;
+  let hits = '';
+  try {
+    hits = execFileSync('git', ['grep', '-nE', pattern], { cwd: pkgRoot, encoding: 'utf8' });
+  } catch (error) {
+    if (error.status !== 1) throw error;
+  }
+  assert(hits === '', `remove the ${prefix} prefix (#63):\n${hits.split('\n').slice(0, 10).join('\n')}`);
+  return { clean: true };
 });
 
 check('vsix-marketplace-links', () => {
@@ -2447,18 +2534,19 @@ check('mprr-absorbed-self-owned-not-external', () => {
   // (c) The absorbed model is positively cited.
   assert(/Absorbed model/.test(readme) && /ADR-0009/.test(readme), 'README must cite the absorbed model + ADR-0009');
   assert(/ADR-0009/.test(srs), 'srs.md must cite ADR-0009');
-  // (d) The de-branded experiments read the LBA_* env var (VIHS_* kept only as a back-compat fallback).
+  // (d) The de-branded experiments read the LBA_* env var; 1.6.0 removed the vi-history-suite-prefixed fallback (#63).
   const ocr = readFileSync(join(pkgRoot, 'experiments', 'ocr-primitive-proof', 'ocr-driver.js'), 'utf8');
   const conf = readFileSync(join(pkgRoot, 'experiments', 'self-test-conformance', 'produce-conformance.cjs'), 'utf8');
   assert(/LBA_MPRR_ROOT/.test(ocr) && /LBA_MPRR_ROOT/.test(conf), 'de-branded experiments must read LBA_MPRR_ROOT');
   assert(/LBA_CONFORMANCE_OUT/.test(conf), 'conformance generator must read LBA_CONFORMANCE_OUT');
-  // (e) The back-compat fallback is retained so existing VIHS_MPRR_ROOT callers keep working.
-  assert(/VIHS_MPRR_ROOT/.test(ocr) && /VIHS_MPRR_ROOT/.test(conf), 'legacy VIHS_MPRR_ROOT must remain as a back-compat fallback');
+  // (e) No fallback to another variable name remains (#63).
+  assert(!/process\.env\.(?!LBA_)[A-Z_]*MPRR_ROOT/.test(ocr + conf) && !/process\.env\.(?!LBA_)[A-Z_]*CONFORMANCE_OUT/.test(conf),
+    'the de-branded experiments must read only the LBA_* names');
   // Teeth: the guard regexes actually catch the retired framing if it is reintroduced.
   assert(/##\s*External dependency/.test('## External dependency'), 'guard must catch a reintroduced "## External dependency" section');
   assert(/\*\*External canonical dependency:\*\*/.test('**External canonical dependency:** mprr'), 'guard must catch a reintroduced srs label');
   assert(/External canonical reference:/.test('- External canonical reference: mprr'), 'guard must catch a reintroduced ADR reference label');
-  return { adr: 'ADR-0009', deBrandedEnv: ['LBA_MPRR_ROOT', 'LBA_CONFORMANCE_OUT'], backCompat: 'VIHS_MPRR_ROOT' };
+  return { adr: 'ADR-0009', deBrandedEnv: ['LBA_MPRR_ROOT', 'LBA_CONFORMANCE_OUT'] };
 });
 // The absorbed implementation stays self-owned (ADR-0009), but its CONTRACT is pinned to the shared contract
 // that mprr publishes (ADR-0086): experiments/mprr-ring/contract/ holds the file vendored from the tagged mprr
@@ -3279,14 +3367,14 @@ check('bus-transport-select', () => {
 });
 
 // LBA-REQ-066 / ADR-0046: off-Discussions step 7 -- the MCP coordination tools are NET-ONLY (no
-// VIHS_COLLAB_TRANSPORT selection). Source-asserts net-only poll/post argv + the net env-passing provider; the
+// COLLAB_TRANSPORT selection). Source-asserts net-only poll/post argv + the net env-passing provider; the
 // runtime is covered by test/mcp-server.mjs (busEnvFromConfig + the transport-agnostic stdio tools).
 check('mcp-net-transport', () => {
   const srv = readFileSync(join(here, '..', 'src', 'mcp', 'runBenchmarkActorMcpServer.ts'), 'utf8');
   assert(/export function pollBusArgs\(/.test(srv) && /export function postNoteArgs\(/.test(srv), 'the MCP server builds the net poll/send argv');
-  assert(!srv.includes('VIHS_COLLAB_TRANSPORT') && srv.includes("'net', 'poll'") && srv.includes("'net', 'send'"), 'poll/post route to net poll/send only (no transport env selection)');
+  assert(!srv.includes('COLLAB_TRANSPORT') && srv.includes("'net', 'poll'") && srv.includes("'net', 'send'"), 'poll/post route to net poll/send only (no transport env selection)');
   const prov = readFileSync(join(here, '..', 'src', 'mcp', 'benchmarkActorMcpServerProvider.ts'), 'utf8');
-  assert(/export function busEnvFromConfig\(/.test(prov) && !prov.includes('VIHS_COLLAB_TRANSPORT') && prov.includes("getConfiguration('labviewBenchmarkActor')"), 'the provider passes only the net bus env (hosts/log) from the extension config');
+  assert(/export function busEnvFromConfig\(/.test(prov) && !prov.includes('COLLAB_TRANSPORT') && prov.includes("getConfiguration('labviewBenchmarkActor')"), 'the provider passes only the net bus env (hosts/log) from the extension config');
   return { server: 'net poll/send only', provider: 'busEnvFromConfig (net-only)' };
 });
 
@@ -3302,7 +3390,7 @@ check('post-verdict-net-transport', () => {
   writeFileSync(tmp, JSON.stringify({ verdict, signOff }));
   const pv = join(here, '..', 'reviewer-workstation', 'post-verdict.mjs');
   const run = (env) => execFileSync(process.execPath, [pv, '--verdict', tmp, '--print-args'], { encoding: 'utf8', env: { ...process.env, ...env } }).trim();
-  const net = run({ VIHS_COLLAB_NET_HOSTS: '10.0.2.2' });
+  const net = run({ COLLAB_NET_HOSTS: '10.0.2.2' });
   assert(net.startsWith('net send ') && net.includes('--hosts 10.0.2.2') && net.includes('--type RESOLVED') && net.includes('--task extension-release-0.5.0') && net.includes('--message-file') && !net.includes('--priority'), `net send argv with a peer (got: ${net})`);
   const noPeer = run({});
   assert(noPeer.startsWith('net send ') && noPeer.includes('--skip-if-no-peer') && !noPeer.includes('--hosts') && !noPeer.includes('post '), `net send graceful no-op without a peer (got: ${noPeer})`);

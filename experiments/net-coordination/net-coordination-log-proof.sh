@@ -10,7 +10,7 @@ set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/../.." && pwd)"
 export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
-export VIHS_COLLAB_AGENT="${VIHS_COLLAB_AGENT:-win-plane}"
+export COLLAB_AGENT="${COLLAB_AGENT:-win-plane}"
 : "${LBABUS:=$repo/tools/collab-cli/bin/Release/net8.0/lbabus.dll}"
 export LBABUS
 run_lbabus() { case "$LBABUS" in *.dll) dotnet "$LBABUS" "$@" ;; *) "$LBABUS" "$@" ;; esac; }
@@ -36,7 +36,7 @@ poll_all="$(run_lbabus net poll --log "$log" --tail 10 2>/dev/null)"
 poll_note="$(run_lbabus net poll --log "$log" --type NOTE 2>/dev/null)"
 poll_resolved="$(run_lbabus net poll --log "$log" --type RESOLVED 2>/dev/null)"
 # 4) graceful no-op: `net poll` with no --log and no env exits 0 (live-only default, ADR-0045).
-( unset VIHS_COLLAB_NET_LOG; run_lbabus net poll > /dev/null 2>&1 ); noarg_rc=$?
+( unset COLLAB_NET_LOG; run_lbabus net poll > /dev/null 2>&1 ); noarg_rc=$?
 
 logged=$(grep -c . "$log" 2>/dev/null || echo 0)
 all_count=$(printf '%s\n' "$poll_all" | grep -c 'task:' || true)

@@ -70,7 +70,7 @@ inter-actor comms only — never run data, images, or model corpora**.
 ## Evidence
 
 - `lbabus net` (LBA-REQ-007) proven loopback (TCP CLAIM→ACK, UDP presence,
-  ping/pong) **and guest→host over the Vagrant NAT** (an agent inside the VIHS
-  clone reached the host listener).
+  ping/pong) **and guest→host over the Vagrant NAT** (an agent inside the clean-room
+  VM clone reached the host listener).
 - LINUX proved the Ollama drive over HTTP (non-stream) and NDJSON stream on real
   hardware, and answered the RFC #19 design questions from that evidence.

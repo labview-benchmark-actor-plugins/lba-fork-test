@@ -89,7 +89,7 @@ async function main() {
   try {
     for (const n of names) {
       exec('docker', ['run', '-d', '--name', n, '--hostname', n, '--network', net,
-        '-e', `VIHS_COLLAB_AGENT=${n}`, '-e', `MESH_PEERS=${peers}`,
+        '-e', `COLLAB_AGENT=${n}`, '-e', `MESH_PEERS=${peers}`,
         '-e', `TIMEOUT_SEC=${timeout}`, '-e', `UDP_TIMEOUT_SEC=${timeout}`,
         '-e', 'SEND_RETRIES=90', '-e', 'UDP_BEACONS=1', image]);
     }
