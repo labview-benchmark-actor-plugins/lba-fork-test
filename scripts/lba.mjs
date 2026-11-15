@@ -57,9 +57,10 @@ import { buildReleaseStage } from '../reviewer-workstation/record-release-stage.
 import { enrolledReviewerPublicKeys } from '../experiments/handoff-beacon/reviewerVerdict.mjs';
 import { validateLbabusProvisioningPin } from './verify-ubuntu-golden-box.mjs';
 import { reviewedVsixSha256 } from './verify-published-vsix.mjs';
+import { canonicalRepo, ghRepoArgs } from './canonical-repo.mjs';
 import { decideAutonomousN3 } from '../experiments/mesh-fulfillment/autonomousN3Controller.mjs';
 
-export const ITERATION = 35; // bump when you refine this tool (see the banner above)
+export const ITERATION = 36; // bump when you refine this tool (see the banner above)
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, '..');
@@ -211,19 +212,20 @@ export function releasePreflightStatic({ version, nodeVersion, pkgVersion, chang
 // preflight so the operator sees the whole sequence and the two irreducible Ed25519 signings up front.
 export function releasePlan(version) {
   const v = String(version);
+  const repo = (() => { try { return canonicalRepo(); } catch { return '<owner/repo>'; } })();
   const phases = [
     { id: 1, key: 'cut-branch', kind: 'auto', exec: 'auto', dependsOn: [], title: `cut release/${v} from develop`, command: `git checkout -b release/${v} develop` },
     { id: 2, key: 'bump', kind: 'auto', exec: 'auto', dependsOn: [1], title: 'bump package.json + stamp CHANGELOG', command: `npm version ${v} --no-git-tag-version  +  stamp CHANGELOG.md [${v}]` },
     { id: 3, key: 'build-vsix', kind: 'auto', exec: 'auto', dependsOn: [2], title: 'build the node-24 candidate .vsix + capture its sha256', command: 'npm run package  +  sha256sum labview-benchmark-actor.vsix' },
-    { id: 4, key: 'dispatch-corroboration', kind: 'auto', exec: 'ci', dependsOn: [3], title: 'dispatch acg-cross-plane-corroboration.yml at the candidate commit', command: 'gh workflow run acg-cross-plane-corroboration.yml --ref <candidate-commit>' },
+    { id: 4, key: 'dispatch-corroboration', kind: 'auto', exec: 'ci', dependsOn: [3], title: 'dispatch acg-cross-plane-corroboration.yml at the candidate commit', command: `gh workflow run acg-cross-plane-corroboration.yml --repo ${repo} --ref <candidate-commit>` },
     { id: 5, key: 'build-attestation', kind: 'auto', exec: 'auto', dependsOn: [4], title: 'build the machine attestation from the run witnesses', command: 'node experiments/acg-quorum/cross-plane-attestation.mjs  (from the corroboration run artifacts)' },
     { id: 6, key: 'quorum-signoff', kind: 'operator', exec: 'operator', signing: true, dependsOn: [5], title: 'Ed25519 quorum sign-off over the attestation (enrolled key)', command: 'lba signing-status  ->  reviewer-workstation/render-quorum.sh all --version ' + v + ' (#415)' },
     { id: 7, key: 'stage-benchmark', kind: 'operator', exec: 'operator', dependsOn: [3], title: 'stage the candidate on the WIN VM (net DONE frame) and set the evidence-bound review target', command: 'lba release-stage-win ' + v + ' --vm <reviewer-vm> --commit <candidate> --vsix <candidate.vsix> --attestation ~/lba-vm-share/attestation-' + v + '.json (#73)  ->  ~/lba-vm-share/staged-frame-WIN-' + v + '.json' },
     { id: 8, key: 'visual-verdict', kind: 'operator', exec: 'operator', signing: true, dependsOn: [7], title: 'signed reviewer visual verdict of the built candidate (Ed25519)', command: 'run "Render Reviewer Verdict" in the VM  ->  render-verdict.sh collect' },
     { id: 9, key: 'assemble-composite', kind: 'auto', exec: 'auto', dependsOn: [3, 5, 6, 7, 8], title: 'assemble the composite-release-decision receipt (binds all pieces to one candidate)', command: 'node reviewer-workstation/assemble-composite.mjs --component extension --version ' + v + ' … --out reviewer-workstation/composite-release-decision-receipt.json (#410)' },
     { id: 10, key: 'record-agreement', kind: 'auto', exec: 'auto', dependsOn: [9], title: 'record WIN+LINUX agreed + visualReview in release-agreement.json', command: 'node tools/collab-cli/record-release-agreement.mjs … (#419)' },
-    { id: 11, key: 'merge-main', kind: 'auto', exec: 'irreversible', dependsOn: [10], title: `merge release/${v} -> main (--no-ff)`, command: `gh pr merge <n> --merge  (release/${v} -> main, --no-ff)` },
-    { id: 12, key: 'cut-gh-release', kind: 'operator', exec: 'irreversible', dependsOn: [11], title: 'tag + workflow_dispatch extension-release.yml + cut the immutable GitHub Release', command: `gh workflow run extension-release.yml  ->  lba release-cut-github ${v} --run <id> --create (#412)` },
+    { id: 11, key: 'merge-main', kind: 'auto', exec: 'irreversible', dependsOn: [10], title: `merge release/${v} -> main (--no-ff)`, command: `gh pr merge <n> --repo ${repo} --merge  (release/${v} -> main, --no-ff)` },
+    { id: 12, key: 'cut-gh-release', kind: 'operator', exec: 'irreversible', dependsOn: [11], title: 'tag + workflow_dispatch extension-release.yml + cut the immutable GitHub Release', command: `gh workflow run extension-release.yml --repo ${repo}  ->  lba release-cut-github ${v} --run <id> --create (#412)` },
     { id: 13, key: 'publish-backmerge', kind: 'operator', exec: 'irreversible', dependsOn: [12], title: 'publish to the stable Marketplace channel + back-merge to develop (--no-ff), then confirm the Marketplace', command: `vsce publish --packagePath <canonical-release.vsix>  ->  git merge --no-ff release/${v} into develop (#417)  ->  lba release-verify-published ${v} (#412)` },
   ];
   return { version: v, phases };
@@ -406,7 +408,7 @@ export function liveReleaseProbes(version, { env = process.env } = {}) {
     compositeSealed,
     agreementRecorded: !!agreement && agreement.includes(v),
     mergedToMain,
-    ghReleaseCut: (() => { try { execFileSync('gh', ['release', 'view', `ext-v${v}`], { stdio: 'pipe' }); return true; } catch { return false; } })(),
+    ghReleaseCut: (() => { try { execFileSync('gh', ghRepoArgs(['release', 'view', `ext-v${v}`], canonicalRepo(pkg)), { stdio: 'pipe' }); return true; } catch { return false; } })(),
     published: isMarketplaceVerificationReceipt(marketplaceReceipt, { extension: extensionId, version: v }),
     backMergedToDevelop,
     publishedAndBackMerged: isMarketplaceVerificationReceipt(marketplaceReceipt, { extension: extensionId, version: v }) && backMergedToDevelop,
@@ -893,7 +895,13 @@ export const COMMANDS = {
       if (!dir) {
         if (runIdx < 0) { console.error('provide --dir <artifactdir> or --run <run-id>'); process.exit(2); }
         dir = execFileSync('mktemp', ['-d']).toString().trim();
-        execFileSync('gh', ['run', 'download', String(args[runIdx + 1]), '--dir', dir], { stdio: 'inherit' });
+        try {
+          execFileSync('gh', ghRepoArgs(['run', 'download', String(args[runIdx + 1]), '--dir', dir]), { stdio: 'inherit' });
+        } catch (error) {
+          console.error(`\u2717 could not download the artifacts of run ${args[runIdx + 1]} from ${canonicalRepo()}: ${String(error.message).split('\n')[0]}`);
+          rmSync(dir, { recursive: true, force: true });
+          process.exit(1);
+        }
       }
       const files = readdirSync(dir, { recursive: true }).map((f) => join(dir, String(f)));
       const r = verifyReleaseAssets(files, { version });
@@ -902,10 +910,10 @@ export const COMMANDS = {
       const quoted = assets.map((a) => `'${a}'`).join(' ');
       if (!args.includes('--create')) {
         console.log(`\u2713 artifact verified for ${r.tag} (vsix ${String(r.vsix)}). DRY-RUN -- re-run with --create (needs your authorized bypass token) to cut it:`);
-        console.log(`  gh release create ${r.tag} ${quoted} --target main --title '${r.tag}' --notes 'Immutable release ${version}.'`);
+        console.log(`  gh release create ${r.tag} ${quoted} --target main --title '${r.tag}' --notes 'Immutable release ${version}.' --repo ${canonicalRepo()}`);
         return;
       }
-      execFileSync('gh', ['release', 'create', r.tag, ...assets, '--target', 'main', '--title', r.tag, '--notes', `Immutable release ${version}.`], { stdio: 'inherit' });
+      execFileSync('gh', ghRepoArgs(['release', 'create', r.tag, ...assets, '--target', 'main', '--title', r.tag, '--notes', `Immutable release ${version}.`]), { stdio: 'inherit' });
       console.log(`\u2713 cut ${r.tag} with ${assets.length} asset(s).`);
     },
   },
@@ -1196,6 +1204,21 @@ const SELFTEST = [
     const backMerged = isReleaseBackMergedToDevelop('1.2.0', (ref, develop) => ref === 'origin/release/1.2.0' && develop === 'origin/develop');
     const publishedOnly = releaseStatus({ version: '1.2.0', probes: { branchExists: true, versionBumped: true, vsixBuilt: true, attestationReady: true, quorumSigned: true, staged: true, visualSigned: true, compositeSealed: true, agreementRecorded: true, mergedToMain: true, ghReleaseCut: true, published: true, publishedAndBackMerged: false } });
     return backMerged && publishedOnly.next?.key === 'publish-backmerge';
+  }],
+  ['gh calls name the canonical repository, never the one gh infers from git remotes (#59)', () => {
+    const canonical = canonicalRepo();
+    const fromGitUrl = canonicalRepo({ repository: { url: 'git+https://github.com/owner/name.git' } });
+    let rejected = false;
+    try { canonicalRepo({ repository: { url: 'https://gitlab.com/owner/name' } }); } catch { rejected = true; }
+    const plan = releasePlan('1.2.0');
+    const ghCommands = plan.phases.map((p) => p.command).filter((c) => /\bgh (workflow|pr|release|run) /.test(c));
+    // Every gh process this tool or the composite assembler starts goes through ghRepoArgs.
+    const unscoped = ['scripts/lba.mjs', 'reviewer-workstation/assemble-composite.mjs']
+      .flatMap((file) => [...read(file).matchAll(/(?:execFileSync|spawnSync|spawn)\('gh',(?!\s*ghRepoArgs\()/g)].map(() => file));
+    return canonical === 'svelderrainruiz/labview-benchmark-actor' && fromGitUrl === 'owner/name' && rejected
+      && ghRepoArgs(['run', 'download', '42'], 'o/r').join(' ') === 'run download 42 --repo o/r'
+      && ghCommands.length >= 3 && ghCommands.every((c) => c.includes(`--repo ${canonical}`))
+      && unscoped.length === 0;
   }],
   ['release-verify-published (#412) confirms a version present in the Marketplace query result', () => {
     const q = { results: [{ extensions: [{ publisher: { publisherName: 'pub' }, extensionName: 'ext', versions: [{ version: '1.2.0' }, { version: '1.1.1' }] }] }] };
