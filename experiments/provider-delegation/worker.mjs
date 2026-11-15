@@ -112,7 +112,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === fs.realpathSync(proces
     concurrency: Number(a.concurrency || 2),
     provider: a.provider || 'ollama',
     model: a.model,
-    actorId: a.actor || process.env.VIHS_COLLAB_AGENT || 'cleanroom-worker',
+    actorId: a.actor || process.env.COLLAB_AGENT || 'cleanroom-worker',
     onDone: (r) => console.log(`[worker] handled id=${r.task && r.task.id} verdict=${r.verdict}`),
   });
 }

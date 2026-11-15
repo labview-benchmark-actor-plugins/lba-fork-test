@@ -17,7 +17,7 @@ if [ ! -x "$LBABUS_DIR/lbabus" ]; then
 fi
 
 docker rm -f "$NAME" >/dev/null 2>&1 || true
-echo "[coordinator] $IMAGE (bare, no .NET) net listen --tcp $PORT --echo --count $COUNT (VIHS_COLLAB_AGENT=CONTAINER)"
+echo "[coordinator] $IMAGE (bare, no .NET) net listen --tcp $PORT --echo --count $COUNT (COLLAB_AGENT=CONTAINER)"
 exec docker run --rm --name "$NAME" -p "$PORT:$PORT" -v "$LBABUS_DIR:/lba:ro" \
-  -e VIHS_COLLAB_AGENT=CONTAINER "$IMAGE" \
+  -e COLLAB_AGENT=CONTAINER "$IMAGE" \
   /lba/lbabus net listen --tcp "$PORT" --echo --count "$COUNT"

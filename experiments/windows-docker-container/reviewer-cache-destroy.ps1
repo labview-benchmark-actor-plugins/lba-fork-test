@@ -33,7 +33,7 @@ $env:VAGRANT_CWD = $metadata.vagrant.cwd
 $env:VAGRANT_DOTFILE_PATH = $metadata.vagrant.dotfilePath
 $env:LBA_VM_NAME = $metadata.vm.name
 $env:LBA_VM_HOSTNAME = $metadata.vm.hostname
-$env:VIHS_REVIEWER_BOX = $metadata.vagrant.box
+$env:REVIEWER_BOX = $metadata.vagrant.box
 vagrant destroy default -f
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 if ((& VBoxManage list vms) -match [regex]::Escape($ConfirmVmUuid)) {

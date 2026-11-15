@@ -79,7 +79,7 @@ $env:VAGRANT_CWD = $metadata.vagrant.cwd
 $env:VAGRANT_DOTFILE_PATH = $metadata.vagrant.dotfilePath
 $env:LBA_VM_NAME = $metadata.vm.name
 $env:LBA_VM_HOSTNAME = $metadata.vm.hostname
-$env:VIHS_REVIEWER_BOX = $metadata.vagrant.box
+$env:REVIEWER_BOX = $metadata.vagrant.box
 $providerIdPath = Join-Path $metadata.vagrant.dotfilePath 'machines\default\virtualbox\id'
 if (-not (Test-Path -LiteralPath $providerIdPath)) { throw 'Retained provider UUID file is missing.' }
 $providerUuid = (Get-Content -LiteralPath $providerIdPath -Raw).Trim()

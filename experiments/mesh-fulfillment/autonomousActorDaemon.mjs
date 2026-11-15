@@ -131,7 +131,7 @@ export function createLbabusSender({ lbabusPath, hosts, tcpPort = 7420, session 
         maxBuffer: MAX_FRAME_BYTES,
         windowsHide: true,
         shell: false,
-        env: { ...process.env, VIHS_COLLAB_AGENT: actorId },
+        env: { ...process.env, COLLAB_AGENT: actorId },
       });
     } finally {
       try { unlinkSync(messageFile); } catch { /* best-effort runtime cleanup */ }
@@ -190,7 +190,7 @@ export async function startAutonomousActorDaemon(config, { spawn = spawnProcess,
     stdio: 'inherit',
     windowsHide: true,
     shell: false,
-    env: { ...process.env, VIHS_COLLAB_AGENT: config.actorId },
+    env: { ...process.env, COLLAB_AGENT: config.actorId },
   });
   const interrupted = service.recoverInterrupted();
   if (interrupted) await sender(interrupted);

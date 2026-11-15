@@ -67,11 +67,11 @@ function sshAsync(port, cmd, timeoutSec = 150) {
 }
 
 function setIp(n) { return `sudo ip addr flush dev ${MESH_IFACE} >/dev/null 2>&1; sudo ip addr add ${n.ip}/24 dev ${MESH_IFACE} >/dev/null 2>&1; sudo ip link set ${MESH_IFACE} up >/dev/null 2>&1`; }
-function sinkCmd(n) { return `${setIp(n)}; export VIHS_COLLAB_AGENT=${n.id}; ${LBABUS} net listen --tcp ${TCP_PORT} --echo --count ${EXPECTED_FRAMES} --timeout 70 2>/dev/null`; }
+function sinkCmd(n) { return `${setIp(n)}; export COLLAB_AGENT=${n.id}; ${LBABUS} net listen --tcp ${TCP_PORT} --echo --count ${EXPECTED_FRAMES} --timeout 70 2>/dev/null`; }
 function sourceCmd(n) {
   const send = (seq, type, msg) => `${LBABUS} net send --hosts ${SINK.ip} --tcp ${TCP_PORT} --session ${RUN} --seq ${seq} --type ${type} --task typed --message "${msg}" --await 2 --retries 40 --retry-ms 500 >/dev/null 2>&1`;
   const payloadLoop = `for k in $(seq 1 ${n.payloads}); do ${LBABUS} net send --hosts ${SINK.ip} --tcp ${TCP_PORT} --session ${RUN} --seq $k --type PROGRESS --task typed --message "p$k" --await 2 --retries 40 --retry-ms 500 >/dev/null 2>&1; done`;
-  return `${setIp(n)}; export VIHS_COLLAB_AGENT=${n.id}; sleep 6; ${payloadLoop}; ${send(n.payloads, 'DONE', `final=${n.payloads}`)}; echo "SOURCE ${n.id} sent ${n.payloads}+DONE"`;
+  return `${setIp(n)}; export COLLAB_AGENT=${n.id}; sleep 6; ${payloadLoop}; ${send(n.payloads, 'DONE', `final=${n.payloads}`)}; echo "SOURCE ${n.id} sent ${n.payloads}+DONE"`;
 }
 
 function destroyNode(vm) {

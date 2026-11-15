@@ -10,9 +10,9 @@
 # which carries its own pinned collab-cli source + a built lbabus (no host repo / SMB needed).
 
 Vagrant.configure("2") do |config|
-  box  = ENV.fetch("VIHS_CLEANROOM_BOX", "vihs/labview-cleanroom-sc")
-  mem  = ENV.fetch("VIHS_TOPO_MEM", "2048")   # small on purpose: comms-only, keep 2 VMs light
-  cpus = ENV.fetch("VIHS_TOPO_CPUS", "2")
+  box  = ENV.fetch("CLEANROOM_BOX", "vihs/labview-cleanroom-sc")
+  mem  = ENV.fetch("TOPO_MEM", "2048")   # small on purpose: comms-only, keep 2 VMs light
+  cpus = ENV.fetch("TOPO_CPUS", "2")
 
   config.vm.box          = box
   config.vm.communicator = "winrm"

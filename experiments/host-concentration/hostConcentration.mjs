@@ -12,7 +12,7 @@ export const SCHEMA = 'labview-benchmark-actor/host-concentration@v1';
 
 // Substrings that mark a coordination-bus message; if an input carries any, it is bus traffic, not run
 // data, and MUST be rejected (the bus is never a run-data channel).
-const BUS_MARKERS = ['vihs-collab-msg', 'ackOf', 'senderId'];
+const BUS_MARKERS = ['bus-msg@1', 'ackOf', 'senderId'];
 
 function assert(cond, msg) {
   if (!cond) {

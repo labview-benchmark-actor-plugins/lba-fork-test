@@ -40,7 +40,7 @@ Node self-test (deterministic, no browser):
 ```bash
 node experiments/dashboard-slider/verify-scrubber.mjs
 # optional real state:
-VIHS_SCRUBBER_STATE=/path/to/synchronized-review-state.json \
+SCRUBBER_STATE=/path/to/synchronized-review-state.json \
   node experiments/dashboard-slider/verify-scrubber.mjs
 ```
 
@@ -59,7 +59,7 @@ NODE_PATH="$dir/node_modules" node experiments/dashboard-slider/scrubberInteract
 cd <mprr>
 node scripts/runReviewCaptureSuccessorShadowDashboardSynchronizedReviewSurface.js \
   --output-dir /tmp/lba-dash-linux/surface --json
-VIHS_SCRUBBER_STATE=/tmp/lba-dash-linux/surface/successor-shadow-dashboard-synchronized-review-state.json \
+SCRUBBER_STATE=/tmp/lba-dash-linux/surface/successor-shadow-dashboard-synchronized-review-state.json \
   node experiments/dashboard-slider/verify-scrubber.mjs
 ```
 

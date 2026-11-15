@@ -8,7 +8,7 @@ strict per-actor isolation, to feed the host-side **ollama comparison layer**.
 
 - `concentrate(corpora)` merges per-actor `{ actorId, runs }` corpora into one host corpus. Every run
   retains its source `actorId` (isolation), runs are ordered deterministically, and the corpus carries a
-  content digest. A **bus-shaped** input (a coordination message carrying `vihs-collab-msg` / `ackOf` /
+  content digest. A **bus-shaped** input (a coordination message carrying `bus-msg@1` / `ackOf` /
   `senderId`) is rejected — the bus is never a run-data channel (ADR-0006 / ADR-0008).
 - `reviewOwnRuns(corpus, actorId)` returns exactly that actor's runs (LBA-REQ-010 AC #1: no cross-VM
   comparison at the actor level; comparison is host-side only).

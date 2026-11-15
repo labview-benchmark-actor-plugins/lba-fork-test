@@ -112,6 +112,12 @@ export function verifyReleaseComponents(input) {
   if (!agentsText.includes(`exactly \`${components.lbabus}\` for this extension build`)) {
     reasons.push('AGENTS.md does not pin the governed lbabus version');
   }
+  // The install fallback must name the same version, or an agent following the preflight installs a bus that
+  // fails the exact-version check.
+  const installVersions = [...agentsText.matchAll(/dotnet tool install --global \S+ --version (\S+?)[`\s]/g)].map((m) => m[1]);
+  if (installVersions.length === 0 || installVersions.some((v) => v !== components.lbabus)) {
+    reasons.push('AGENTS.md lbabus install command does not install the governed lbabus version');
+  }
   if (!agentsText.includes(`bundle v${components.humanTasks}`)) {
     reasons.push('AGENTS.md does not pin the governed human task bundle version');
   }

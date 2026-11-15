@@ -8,7 +8,7 @@
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const mprrRoot = process.env.LBA_MPRR_ROOT || process.env.VIHS_MPRR_ROOT || 'C:/dev/mprr';
+const mprrRoot = process.env.LBA_MPRR_ROOT || 'C:/dev/mprr';
 const { readWindowsImageOcr } = require(path.join(mprrRoot, 'scripts', 'readWindowsImageOcr.js'));
 
 const imagePath = process.argv[2] || path.join(process.env.TEMP || '.', 'ocr-proof', 'surface.png');

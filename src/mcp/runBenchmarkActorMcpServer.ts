@@ -85,12 +85,12 @@ export async function getBenchmarkSeries(root: string = repoRoot): Promise<McpTo
 }
 
 /** The live-only `lbabus net` bus config for the MCP tools (LBA-REQ-066, ADR-0046, net-only), from env passed by
- *  the extension at server launch (busEnvFromConfig): VIHS_COLLAB_NET_HOSTS + VIHS_COLLAB_NET_LOG. The
+ *  the extension at server launch (busEnvFromConfig): COLLAB_NET_HOSTS + COLLAB_NET_LOG. The
  *  GitHub-Discussion transport opt-out was removed off-Discussions step 7. */
 function busNetConfig(): { netHosts: string; netLog: string } {
   return {
-    netHosts: (process.env.VIHS_COLLAB_NET_HOSTS ?? '').trim(),
-    netLog: (process.env.VIHS_COLLAB_NET_LOG ?? '').trim()
+    netHosts: (process.env.COLLAB_NET_HOSTS ?? '').trim(),
+    netLog: (process.env.COLLAB_NET_LOG ?? '').trim()
   };
 }
 

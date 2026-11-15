@@ -9,7 +9,7 @@
  * vagrant/playwright/viPreviewViewerInteraction.cjs.
  *
  * Run: node experiments/dashboard-slider/verify-scrubber.mjs
- * Optional real state: VIHS_SCRUBBER_STATE=<path to synchronized-review-state.json>
+ * Optional real state: SCRUBBER_STATE=<path to synchronized-review-state.json>
  */
 
 import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
@@ -140,7 +140,7 @@ check('synthetic document embeds data URIs', buildBenchmarkFrameScrubberHtml(syn
 // 3b. mapper on the REAL emitted state when present (bonus; writes a demo doc).
 // ---------------------------------------------------------------------------
 const statePath =
-  process.env.VIHS_SCRUBBER_STATE ||
+  process.env.SCRUBBER_STATE ||
   '/tmp/lba-dash-linux/surface/successor-shadow-dashboard-synchronized-review-state.json';
 if (existsSync(statePath)) {
   console.log('synchronized-review-state mapper (real emitted state)');
@@ -153,12 +153,12 @@ if (existsSync(statePath)) {
   );
   const realHtml = buildBenchmarkFrameScrubberHtml(realModel, 'demo-nonce-0001');
   check('real document embeds real PNG data URIs', realHtml.includes('data:image/png;base64,'));
-  const demoOut = process.env.VIHS_SCRUBBER_DEMO_OUT || join(HERE, '.demo', 'scrubber-demo.html');
+  const demoOut = process.env.SCRUBBER_DEMO_OUT || join(HERE, '.demo', 'scrubber-demo.html');
   mkdirSync(dirname(demoOut), { recursive: true });
   writeFileSync(demoOut, realHtml);
   console.log('  ..   wrote demo document -> ' + demoOut + ' (' + realHtml.length + ' bytes)');
 } else {
-  console.log('  ..   real emitted state not present (set VIHS_SCRUBBER_STATE to add the bonus check)');
+  console.log('  ..   real emitted state not present (set SCRUBBER_STATE to add the bonus check)');
 }
 
 // ---------------------------------------------------------------------------

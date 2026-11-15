@@ -23,7 +23,7 @@ Adopt a **live-only** coordination model over `net` TCP — **no central or asyn
   not a shared or central store.
 - **`net poll` reads the local log.** New `lbabus net poll [--log <file>] [--tail N] [--type T] [--task T]`
   reads + filters the local receive-log, mirroring the Discussion `poll` UX over TCP. With no log (never
-  listened / nothing heard) it prints nothing and exits 0; with no `--log` / `VIHS_COLLAB_NET_LOG` it fails
+  listened / nothing heard) it prints nothing and exits 0; with no `--log` / `COLLAB_NET_LOG` it fails
   closed.
 - **The send side already exists** (`net send`), so `post` / `postNote` / verdict announcements migrate to
   `net` with no new transport.

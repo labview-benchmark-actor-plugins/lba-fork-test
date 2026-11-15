@@ -70,7 +70,7 @@ check('per-actor-isolation-own-run-review', () => {
 
 check('comms-only-invariant-rejects-bus-input', () => {
   // A bus-shaped envelope must NEVER be concentrated as run data (the bus is not a run-data channel).
-  const busShaped = [{ actorId: 'vm-a', runs: [{ runId: 'r1', schema: 'vihs-collab-msg@v1', type: 'DONE', ackOf: 7 }] }];
+  const busShaped = [{ actorId: 'vm-a', runs: [{ runId: 'r1', schema: 'labview-benchmark-actor/bus-msg@1', type: 'DONE', ackOf: 7 }] }];
   let threw = false;
   try {
     concentrate(busShaped);

@@ -16,8 +16,8 @@ maintainer-held Windows + LabVIEW box (there is **no public LabVIEW box** — li
 
 | Provider | Host lane | Default box | Override |
 | --- | --- | --- | --- |
-| `virtualbox` | Linux/Ubuntu (LINUX lane; validated here) | `actor/win11-labview2026` | `VIHS_REVIEWER_BOX` |
-| `vmware_desktop` | Windows/VMware (WIN lane) | `vihs/labview-cleanroom` | `VIHS_REVIEWER_BOX_VMWARE` |
+| `virtualbox` | Linux/Ubuntu (LINUX lane; validated here) | `actor/win11-labview2026` | `REVIEWER_BOX` |
+| `vmware_desktop` | Windows/VMware (WIN lane) | `vihs/labview-cleanroom` | `REVIEWER_BOX_VMWARE` |
 
 Reviewers **without** a box build one per the golden-box docs (bring your own **licensed**
 LabVIEW, required for the end-to-end LabVIEW case TC-09) and register it under the name above,
@@ -237,13 +237,13 @@ them without any menu hunting.
 | --- | --- | --- |
 | `LBA_VM_NAME` | `actor` | VM name shown in VirtualBox / VMware. Set a unique value to run **multiple** reviewer instances side by side. |
 | `LBA_VM_HOSTNAME` | = `LBA_VM_NAME` | Guest Windows hostname, sanitized to NetBIOS rules (`<=15` chars, `[A-Za-z0-9-]`). |
-| `VIHS_REVIEWER_BOX` | `actor/win11-labview2026` | VirtualBox box name. |
-| `VIHS_REVIEWER_BOX_VMWARE` | `vihs/labview-cleanroom` | VMware box name. |
-| `VIHS_REVIEWER_MEM` | `8192` | Guest memory (MB). |
-| `VIHS_REVIEWER_CPUS` | `4` | Guest vCPUs. |
-| `VIHS_REVIEWER_REPO` | `svelderrainruiz/labview-benchmark-actor` | Release source for the `.vsix` + `lbabus`. |
-| `VIHS_REVIEWER_EXT_TAG` | `latest` | `ext-v*` tag to install (`latest` = newest gated release). |
-| `VIHS_REVIEWER_LBABUS_TAG` | `latest` | `collab-cli-v*` tag to install (`latest` = newest release). |
+| `REVIEWER_BOX` | `actor/win11-labview2026` | VirtualBox box name. |
+| `REVIEWER_BOX_VMWARE` | `vihs/labview-cleanroom` | VMware box name. |
+| `REVIEWER_MEM` | `8192` | Guest memory (MB). |
+| `REVIEWER_CPUS` | `4` | Guest vCPUs. |
+| `REVIEWER_REPO` | `svelderrainruiz/labview-benchmark-actor` | Release source for the `.vsix` + `lbabus`. |
+| `REVIEWER_EXT_TAG` | `latest` | `ext-v*` tag to install (`latest` = newest gated release). |
+| `REVIEWER_LBABUS_TAG` | `latest` | `collab-cli-v*` tag to install (`latest` = newest release). |
 | `VAGRANT_HOME` | Vagrant default | Box store. The verified local VirtualBox registration is in `D:\vagrant-home`. |
 
 ## What provisioning does

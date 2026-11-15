@@ -15,9 +15,9 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 function Step([string]$m) { Write-Host "[reviewer] $m" }
 
-$repo      = $env:VIHS_REVIEWER_REPO
-$extTag    = $env:VIHS_REVIEWER_EXT_TAG
-$lbabusTag = $env:VIHS_REVIEWER_LBABUS_TAG
+$repo      = $env:REVIEWER_REPO
+$extTag    = $env:REVIEWER_EXT_TAG
+$lbabusTag = $env:REVIEWER_LBABUS_TAG
 Step "repo=$repo ext-tag=$extTag lbabus-tag=$lbabusTag"
 
 # 0) Prereqs. The VirtualBox golden box (actor/win11-labview2026) ships VS Code + gh, but the VMware
@@ -119,7 +119,7 @@ if (Test-Path $tokenFile) {
   if ($reviewerToken) { $reviewerToken = $reviewerToken.Trim() }
   Remove-Item $tokenFile -Force -ErrorAction SilentlyContinue
 }
-if (-not $reviewerToken) { $reviewerToken = $env:VIHS_REVIEWER_GH_TOKEN }
+if (-not $reviewerToken) { $reviewerToken = $env:REVIEWER_GH_TOKEN }
 if (-not $reviewerToken) { $reviewerToken = $env:GH_TOKEN }
 if (-not $reviewerToken) {
   throw "No GitHub token in the guest. $repo is INTERNAL, so its gated ext-v*/collab-cli-v* Releases need auth. On the HOST, write a token to reviewer-workstation/.gh-token before provisioning (e.g. Set-Content reviewer-workstation/.gh-token (gh auth token)) then re-run: VAGRANT_CWD=reviewer-workstation vagrant provision. The token needs contents:read on $repo (SSO-authorized for SSO orgs)."
@@ -171,21 +171,21 @@ function Install-ExtensionForInteractiveUser([string]$VsixPath) {
 # bundle and run the dependency-free Node verifier (experiments/acg-transparency/verify-release-inclusion.mjs),
 # which admits install only when >= quorumMin witnesses each have an enrolled-witness-signed attestation that is
 # INCLUDED in the Ed25519-signed Merkle transparency log. A non-zero exit BLOCKS the install (fail-closed). Set
-# VIHS_REVIEWER_ALLOW_UNATTESTED=1 ONLY to provision from a pre-provenance release.
+# REVIEWER_ALLOW_UNATTESTED=1 ONLY to provision from a pre-provenance release.
 function Assert-ReleaseProvenance([string]$ExtTag, [string]$WorkDir) {
   gh release download $ExtTag --repo $repo --pattern '*.provenance.json' --dir $WorkDir --clobber 2>$null
   $prov = Get-ChildItem $WorkDir -Filter '*.provenance.json' -ErrorAction SilentlyContinue | Select-Object -First 1
   if (-not $prov) {
-    if ($env:VIHS_REVIEWER_ALLOW_UNATTESTED -eq '1') {
-      Step "WARN: release $ExtTag carries no *.provenance.json and VIHS_REVIEWER_ALLOW_UNATTESTED=1 -> installing UNATTESTED."
+    if ($env:REVIEWER_ALLOW_UNATTESTED -eq '1') {
+      Step "WARN: release $ExtTag carries no *.provenance.json and REVIEWER_ALLOW_UNATTESTED=1 -> installing UNATTESTED."
       return
     }
-    throw "verify-before-install BLOCKED: release $ExtTag carries no *.provenance.json corroboration bundle. Cut the release with an attached provenance bundle, or set VIHS_REVIEWER_ALLOW_UNATTESTED=1 to override (NOT recommended)."
+    throw "verify-before-install BLOCKED: release $ExtTag carries no *.provenance.json corroboration bundle. Cut the release with an attached provenance bundle, or set REVIEWER_ALLOW_UNATTESTED=1 to override (NOT recommended)."
   }
   if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
     throw "verify-before-install BLOCKED: 'node' is not on PATH; the reviewer box needs Node to verify the corroboration provenance."
   }
-  $srcDir = $env:VIHS_REVIEWER_REPO_DIR
+  $srcDir = $env:REVIEWER_REPO_DIR
   if (-not $srcDir) { $srcDir = Join-Path $env:TEMP 'lba-actor-src' }
   if (Test-Path (Join-Path $srcDir '.git')) {
     Step "Updating verifier source at $srcDir"
@@ -206,7 +206,7 @@ function Assert-ReleaseProvenance([string]$ExtTag, [string]$WorkDir) {
 # cosign KEYLESS verify-before-install (LBA-REQ-025 / ADR-0016, NETWORK-GATED): verify the .vsix's own keyless
 # signature -- a Fulcio certificate bound to the extension-release.yml workflow identity + a public rekor entry,
 # attached to the Release by the hardened release lane -- BEFORE installing it. Needs network (the sigstore TUF
-# root + rekor). A failed OR absent signature BLOCKS the install (fail-closed). Set VIHS_REVIEWER_ALLOW_UNSIGNED=1
+# root + rekor). A failed OR absent signature BLOCKS the install (fail-closed). Set REVIEWER_ALLOW_UNSIGNED=1
 # ONLY to install a pre-hardening release that predates artifact keyless-signing.
 # The Fulcio cert identity binds to the ref the signing workflow ran on. The live release is keyless-signed by
 # the canonical repository's extension-release.yml on workflow_dispatch from refs/heads/main (the release
@@ -233,11 +233,11 @@ function Assert-VsixKeylessSignature([string]$ExtTag, [string]$Vsix, [string]$Wo
   gh release download $ExtTag --repo $repo --pattern '*.vsix.sigstore' --dir $WorkDir --clobber 2>$null
   $sig = Get-ChildItem $WorkDir -Filter '*.vsix.sigstore' -ErrorAction SilentlyContinue | Select-Object -First 1
   if (-not $sig) {
-    if ($env:VIHS_REVIEWER_ALLOW_UNSIGNED -eq '1') {
-      Step "WARN: release $ExtTag carries no *.vsix.sigstore keyless signature and VIHS_REVIEWER_ALLOW_UNSIGNED=1 -> installing UNVERIFIED."
+    if ($env:REVIEWER_ALLOW_UNSIGNED -eq '1') {
+      Step "WARN: release $ExtTag carries no *.vsix.sigstore keyless signature and REVIEWER_ALLOW_UNSIGNED=1 -> installing UNVERIFIED."
       return
     }
-    throw "keyless verify-before-install BLOCKED: release $ExtTag carries no *.vsix.sigstore keyless signature. Cut the release with the hardened extension-release workflow, or set VIHS_REVIEWER_ALLOW_UNSIGNED=1 to override (NOT recommended)."
+    throw "keyless verify-before-install BLOCKED: release $ExtTag carries no *.vsix.sigstore keyless signature. Cut the release with the hardened extension-release workflow, or set REVIEWER_ALLOW_UNSIGNED=1 to override (NOT recommended)."
   }
   Ensure-Cosign
   Step "cosign verify-blob: verifying the .vsix keyless signature ($($sig.Name))"

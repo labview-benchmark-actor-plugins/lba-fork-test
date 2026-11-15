@@ -295,10 +295,10 @@ assert(fExplicit.args[0] === '/explicit/server.js' && fExplicit.version === unde
 // LBA-REQ-066 (off-Discussions step 7, net-only): busEnvFromConfig maps only the net bus config to the MCP server's env.
 const envNet = providerMod.busEnvFromConfig({ netHosts: '10.0.2.2', netLog: '/tmp/bus.jsonl' });
 assert(
-  envNet.VIHS_COLLAB_NET_HOSTS === '10.0.2.2'
-    && envNet.VIHS_COLLAB_NET_LOG === '/tmp/bus.jsonl'
+  envNet.COLLAB_NET_HOSTS === '10.0.2.2'
+    && envNet.COLLAB_NET_LOG === '/tmp/bus.jsonl'
     && typeof envNet.LBA_LBABUS_PATH === 'string'
-    && !('VIHS_COLLAB_TRANSPORT' in envNet),
+    && !('COLLAB_TRANSPORT' in envNet),
   'busEnvFromConfig maps net hosts + log + resolved lbabus to env (net-only, no transport env)',
 );
 const envNone = providerMod.busEnvFromConfig({ netHosts: '', netLog: '' });
@@ -488,14 +488,14 @@ const seriesOk = await server.getBenchmarkSeries();
 assert(!seriesOk.isError && /benchmark-series@v1/.test(seriesOk.content[0].text), 'getBenchmarkSeries reads the real bundled series by default');
 assert(server.errorText('a bare string') === 'a bare string', 'errorText passes a non-Error throwable through as a string');
 assert(server.errorText(new Error('boom')) === 'boom', 'errorText unwraps an Error to its message');
-const savedNetHosts = process.env.VIHS_COLLAB_NET_HOSTS;
-const savedNetLog = process.env.VIHS_COLLAB_NET_LOG;
-process.env.VIHS_COLLAB_NET_HOSTS = ' 127.0.0.1:7420 ';
-process.env.VIHS_COLLAB_NET_LOG = ' C:\\logs\\bus.jsonl ';
+const savedNetHosts = process.env.COLLAB_NET_HOSTS;
+const savedNetLog = process.env.COLLAB_NET_LOG;
+process.env.COLLAB_NET_HOSTS = ' 127.0.0.1:7420 ';
+process.env.COLLAB_NET_LOG = ' C:\\logs\\bus.jsonl ';
 assert(server.pollBusArgs(4).includes('--log'), 'pollBusArgs includes a configured receive log');
 assert(server.postNoteArgs('hello').includes('--hosts'), 'postNoteArgs includes configured peers');
-if (savedNetHosts === undefined) delete process.env.VIHS_COLLAB_NET_HOSTS; else process.env.VIHS_COLLAB_NET_HOSTS = savedNetHosts;
-if (savedNetLog === undefined) delete process.env.VIHS_COLLAB_NET_LOG; else process.env.VIHS_COLLAB_NET_LOG = savedNetLog;
+if (savedNetHosts === undefined) delete process.env.COLLAB_NET_HOSTS; else process.env.COLLAB_NET_HOSTS = savedNetHosts;
+if (savedNetLog === undefined) delete process.env.COLLAB_NET_LOG; else process.env.COLLAB_NET_LOG = savedNetLog;
 console.log('mcp-stdio-corrupt: PASS -- version=unknown fallback + soft series isError + errorText folding (graceful)');
 
 // ---- 4. STDIO with lbabus ABSENT (broken PATH): get_host_capabilities degrades to a SOFT ENOENT isError,
