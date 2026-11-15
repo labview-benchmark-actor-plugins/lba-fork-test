@@ -3254,6 +3254,17 @@ check('reviewer-version-contract', () => {
   return { source: 'release-components.json', scope: 'Windows/Ubuntu reviewer staging + continuation readiness' };
 });
 
+// LBA-REQ-069 (#73): release phase 7 in one command. The driver stages the exact candidate on the WIN reviewer VM,
+// proves the VM holds those bytes, confirms the install, configures the per-version visual key, records the
+// correlated DONE frame, and binds the review target to the attestation evidence. The offline selftest drives it
+// against a fake VBoxManage: guest runs carry no argv0 and no password on a command line, and every broken
+// precondition fails closed before any evidence is written.
+check('release-stage-win', () => {
+  const out = execFileSync(process.execPath, [join(here, '..', 'reviewer-workstation', 'release-stage-win.selftest.mjs')], { stdio: 'pipe' }).toString();
+  assert(/release-stage-win selftest: 4\/4 passed/.test(out), `release-stage-win selftest did not pass: ${out.trim().slice(-300)}`);
+  return { selftest: 'release-stage-win 4/4 (builders, ordered happy path, 9 fail-closed cases, dry run)' };
+});
+
 // LBA-REQ-059 / ADR-0039: the host<->VM-agent CLOSED LOOP over lbabus net TCP. A pure parser self-test (no
 // network/VM), the committed live+loopback receipt, and the semantic verdict types on the net envelope (option A):
 // the host awaits the VM agent's correlated reply over TCP and the reviewer verdict announces as a first-class

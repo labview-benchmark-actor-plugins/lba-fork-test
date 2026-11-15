@@ -61,8 +61,24 @@ as `~/lba-vm-share/staged-frame-WIN-X.Y.Z.json`; this is the independent, versio
 completion evidence for release phase 7 (neither a quorum sign-off nor a visual verdict
 can substitute for it).
 
-Capture and normalize that frame instead of hand-authoring JSON. After the WIN reviewer agent reports its
-stage task, await its correlated `DONE` frame and then build the composite-ready artifact:
+Stage, capture, and bind in one command (#73). With the reviewer VM running and the per-version reviewer keys
+enrolled:
+
+```
+npm run lba -- release-stage-win X.Y.Z --vm <reviewer-vm> --commit <candidate-commit> \
+   --vsix <candidate.vsix> --attestation ~/lba-vm-share/attestation-X.Y.Z.json
+```
+
+It copies the candidate into the VM and fails unless the VM holds the exact bytes. It then installs the extension
+and confirms the listed `id@version`, and points the reviewer key setting at the `X.Y.Z` visual key. Next, it listens
+for the correlated `DONE` while the in-VM sender reports the staged identity, and writes
+`~/lba-vm-share/staged-frame-WIN-X.Y.Z.json`. Finally, it runs `render-verdict.sh set-target` with the evidence taken
+from the attestation (`cross-plane-run`, `attestation-sha256`) plus the `windows-stage` task. The VM password comes from
+`LBA_VM_PASS` or `~/.config/lba/vm-pass` and reaches VBoxManage only as a private `--passwordfile`. `--dry-run`
+prints the plan, and the command refuses to overwrite an existing staged frame without `--force`.
+
+The steps it composes, for diagnosis: after the WIN reviewer agent reports its stage task, await its correlated
+`DONE` frame and then build the composite-ready artifact:
 
 ```
 node reviewer-workstation/await-agent-reply.mjs \
