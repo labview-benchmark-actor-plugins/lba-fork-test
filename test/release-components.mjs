@@ -56,6 +56,16 @@ assert.equal(verifyReleaseComponents({
   ...base,
   packageJson: { ...base.packageJson, scripts: { package: 'vsce package --pre-release --out labview-benchmark-actor.vsix' } },
 }).ok, false);
+// Trusted Publishing publishes with a pinned vsce over OIDC; that is still the stable channel, a pre-release is not.
+assert.equal(verifyReleaseComponents({
+  ...base,
+  releaseWorkflow: 'npx --yes @vscode/vsce@4.1.1 publish --packagePath "$release_dir/x.vsix" --oidc',
+}).ok, true);
+assert.equal(verifyReleaseComponents({
+  ...base,
+  releaseWorkflow: 'npx --yes @vscode/vsce@4.1.1 publish --packagePath "$release_dir/x.vsix" --oidc --pre-release',
+}).ok, false);
+assert.equal(verifyReleaseComponents({ ...base, releaseWorkflow: 'vsce publish --pre-release' }).ok, false);
 
 const falselyPromoted = structuredClone(releaseRiskBaseline);
 for (const row of falselyPromoted.releaseEvidence) {

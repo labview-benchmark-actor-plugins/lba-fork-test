@@ -1586,7 +1586,9 @@ check('release-component-versioning', () => {
   const lbabus = readFileSync(join(pkgRoot, 'tools', 'collab-cli', 'LbaBus.csproj'), 'utf8');
   const tasks = readFileSync(join(pkgRoot, 'src', 'humanTasks.ts'), 'utf8');
   const hook = readFileSync(join(pkgRoot, '.githooks', 'pre-commit'), 'utf8');
-  const workflow = readFileSync(join(pkgRoot, '.github', 'workflows', 'extension-release.yml'), 'utf8');
+  const workflow = readFileSync(join(pkgRoot, '.github', 'workflows', 'extension-release.yml'), 'utf8').replace(/\r\n/g, '\n');
+  const publishTool = readJson(join('.github', 'marketplace-publish', 'package.json'));
+  const publishLock = readJson(join('.github', 'marketplace-publish', 'package-lock.json'));
   const releaseCli = readFileSync(join(pkgRoot, 'scripts', 'lba.mjs'), 'utf8');
   const releaseComponentsSource = readFileSync(join(pkgRoot, 'scripts', 'release-components.mjs'), 'utf8');
   const riskBaseline = readJson('release-risk-baseline.json');
@@ -1620,9 +1622,18 @@ check('release-component-versioning', () => {
   assert(
     workflow.includes('inputs.publish_marketplace')
       && workflow.includes('gh release download')
-      && workflow.includes('vsce publish --packagePath "$release_dir/'),
+      && /\.github\/marketplace-publish\/node_modules\/\.bin\/vsce publish --packagePath "\$release_dir\/[^"\n]+" --oidc/.test(workflow),
     'GitHub-first stable Marketplace policy drifted',
   );
+  // Trusted Publishing: the publish job runs in the `marketplace` environment (the operator approves each deployment)
+  // with an OIDC id-token, and no stored Marketplace PAT is referenced anywhere in the workflow.
+  assert(/\n  publish:\n(?:    .*\n|\s*\n)*?    environment: marketplace\n/.test(workflow), 'Marketplace publish must run in the marketplace environment');
+  assert(!/VSCE_PAT/.test(workflow), 'Marketplace publish must use Trusted Publishing, not a stored PAT');
+  // The publish job holds the OIDC token, so its tool must come from a committed lockfile with scripts disabled.
+  assert(workflow.includes('npm ci --prefix .github/marketplace-publish --ignore-scripts'), 'the Marketplace publishing tool must install from its lockfile with scripts disabled');
+  const pinnedVsce = publishTool.dependencies?.['@vscode/vsce'];
+  const lockedVsce = publishLock.packages?.['node_modules/@vscode/vsce'];
+  assert(/^\d+\.\d+\.\d+$/.test(pinnedVsce || '') && lockedVsce?.version === pinnedVsce && /^sha512-/.test(lockedVsce?.integrity || ''), 'the Marketplace publishing tool must pin an exact, integrity-locked @vscode/vsce');
   assert(releaseCli.includes("'--target', 'main'"), 'GitHub release target-main control drifted');
   assert(releaseComponentsSource.includes("fromHead('experiments/governance-overrides.json')"), 'first-introduction fallback omits experiment-governance version');
   assert(releaseCli.includes("purpose: 'quorum'") && releaseCli.includes('no quorum key enrolled'), 'signing readiness is not version/quorum scoped');
