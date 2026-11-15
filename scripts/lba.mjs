@@ -58,7 +58,7 @@ import { validateLbabusProvisioningPin } from './verify-ubuntu-golden-box.mjs';
 import { reviewedVsixSha256 } from './verify-published-vsix.mjs';
 import { decideAutonomousN3 } from '../experiments/mesh-fulfillment/autonomousN3Controller.mjs';
 
-export const ITERATION = 33; // bump when you refine this tool (see the banner above)
+export const ITERATION = 34; // bump when you refine this tool (see the banner above)
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, '..');
@@ -217,7 +217,7 @@ export function releasePlan(version) {
     { id: 4, key: 'dispatch-corroboration', kind: 'auto', exec: 'ci', dependsOn: [3], title: 'dispatch acg-cross-plane-corroboration.yml at the candidate commit', command: 'gh workflow run acg-cross-plane-corroboration.yml --ref <candidate-commit>' },
     { id: 5, key: 'build-attestation', kind: 'auto', exec: 'auto', dependsOn: [4], title: 'build the machine attestation from the run witnesses', command: 'node experiments/acg-quorum/cross-plane-attestation.mjs  (from the corroboration run artifacts)' },
     { id: 6, key: 'quorum-signoff', kind: 'operator', exec: 'operator', signing: true, dependsOn: [5], title: 'Ed25519 quorum sign-off over the attestation (enrolled key)', command: 'lba signing-status  ->  reviewer-workstation/render-quorum.sh all --version ' + v + ' (#415)' },
-    { id: 7, key: 'stage-benchmark', kind: 'operator', exec: 'operator', dependsOn: [3], title: 'stage + live-benchmark the candidate on the WIN VM (net DONE frame)', command: 'reviewer-workstation/render-verdict.sh set-target --version ' + v + ' … (#411)  ->  save the WIN DONE frame as ~/lba-vm-share/staged-frame-WIN-' + v + '.json' },
+    { id: 7, key: 'stage-benchmark', kind: 'operator', exec: 'operator', dependsOn: [3], title: 'stage the candidate on the WIN VM (net DONE frame) and set the evidence-bound review target', command: 'lba release-stage-win ' + v + ' --vm <reviewer-vm> --commit <candidate> --vsix <candidate.vsix> --attestation ~/lba-vm-share/attestation-' + v + '.json (#73)  ->  ~/lba-vm-share/staged-frame-WIN-' + v + '.json' },
     { id: 8, key: 'visual-verdict', kind: 'operator', exec: 'operator', signing: true, dependsOn: [7], title: 'signed reviewer visual verdict of the built candidate (Ed25519)', command: 'run "Render Reviewer Verdict" in the VM  ->  render-verdict.sh collect' },
     { id: 9, key: 'assemble-composite', kind: 'auto', exec: 'auto', dependsOn: [3, 5, 6, 7, 8], title: 'assemble the composite-release-decision receipt (binds all pieces to one candidate)', command: 'node reviewer-workstation/assemble-composite.mjs --component extension --version ' + v + ' … --out reviewer-workstation/composite-release-decision-receipt.json (#410)' },
     { id: 10, key: 'record-agreement', kind: 'auto', exec: 'auto', dependsOn: [9], title: 'record WIN+LINUX agreed + visualReview in release-agreement.json', command: 'node tools/collab-cli/record-release-agreement.mjs … (#419)' },
@@ -844,6 +844,18 @@ export const COMMANDS = {
         console.log(`  recorded resumable Marketplace verification: ${receiptPath}`);
       } catch (e) {
         console.error(`\u2717 Marketplace query error: ${e.message}`);
+        process.exitCode = 1;
+      }
+    },
+  },
+  'release-stage-win': {
+    desc: 'release phase 7: stage the candidate on the WIN reviewer VM, record staged-frame-WIN-X.Y.Z.json, and set the evidence-bound review target (#73)',
+    run: async (args) => {
+      try {
+        const { main } = await import('../reviewer-workstation/release-stage-win.mjs');
+        await main(args);
+      } catch (error) {
+        console.error(`\u2717 release-stage-win: ${error.message}`);
         process.exitCode = 1;
       }
     },
