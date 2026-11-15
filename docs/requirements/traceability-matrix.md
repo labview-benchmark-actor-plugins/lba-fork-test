@@ -13,13 +13,13 @@
 | LBA-REQ-004 | Benchmark time-cursor (draggable vertical line) | Proven | §3.4 Viewer | ADR-0002 | T-004 | 11 |
 | LBA-REQ-005 | Time-indexed picture shown below the benchmark | Proven | §3.4 Viewer | ADR-0002, ADR-0005, ADR-0007, ADR-0009, ADR-0086 | T-005 | 3 |
 | LBA-REQ-006 | Multi-VM Vagrant benchmarking topology | Proven | §3.2 Deployment | ADR-0004 | T-006 | 2 |
-| LBA-REQ-007 | TCP/UDP coordination bus (replaces GitHub Discussion) | Proven | §3.5 Coordination-transport | ADR-0003, ADR-0004, ADR-0008 | T-007 | 1 |
+| LBA-REQ-007 | TCP/UDP coordination bus (replaces GitHub Discussion) | Proven | §3.5 Coordination-transport | ADR-0003, ADR-0004, ADR-0008, ADR-0088 | T-007 | 1 |
 | LBA-REQ-008 | Standards-baseline stamp and move-readiness | Proven | §3.1 Packaging / boundary | ADR-0010, ADR-0013, ADR-0087 | T-008 | 5 |
 | LBA-REQ-009 | VM cleanroom image storage via the mprr ring buffer | Proven | §3.3 Actor / run-result | ADR-0009, ADR-0086 | T-009 | 5 |
 | LBA-REQ-010 | Own-run review, host concentration, and the ollama comparison layer | Proven | §3.6 Analysis | ADR-0006, ADR-0008 | T-010 | 16 |
 | LBA-REQ-011 | CPU/RAM/disk usage correlation with a pre/post-trigger window | Proven | §3.6 Analysis | — | T-011 | 30 |
 | LBA-REQ-012 | Version-pinned agent base instructions | Proven | §3.7 Agentic-infrastructure | — | T-012 | 5 |
-| LBA-REQ-013 | Prioritized, addressable coordination messages | Superseded | §3.7 Agentic-infrastructure | ADR-0048 | T-013 | 2 |
+| LBA-REQ-013 | Prioritized, addressable coordination messages | Superseded | §3.7 Agentic-infrastructure | ADR-0048, ADR-0088 | T-013 | 2 |
 | LBA-REQ-014 | Cross-plane benchmark comparison | Proven | §3.6 Analysis | — | T-014 | 17 |
 | LBA-REQ-015 | VI Analyzer as a cross-plane benchmark | Proven | §3.6 Analysis | — | T-015 | 17 |
 | LBA-REQ-016 | GitFlow branch governance | Proven | §3.8 Configuration-management & assurance | ADR-0010 | T-016 | 5 |
@@ -109,5 +109,6 @@
 | LBA-REQ-100 | Fail-closed autonomous N>=3 controller decision | Proven | — | ADR-0083 | T-100 | 6 |
 | LBA-REQ-101 | Read-only active-capture MCP resources | Planned | §3.7 Agentic-infrastructure | ADR-0084 | T-101 | 8 |
 | LBA-REQ-102 | Standalone Windows desktop capture | Planned | §3.7 Agentic-infrastructure | ADR-0085 | T-102 | 7 |
+| LBA-REQ-103 | Obsidian-ready wiki generated from docs | Proven | §3.8 Configuration-management & assurance | ADR-0089 | T-103 | 4 |
 
-_Generated for 102 requirements._
+_Generated for 103 requirements._

@@ -106,7 +106,7 @@ $providerIdPath = Join-Path $stateRoot 'machines\default\virtualbox\id'
 
 New-Item -ItemType Directory -Path $runRoot, $captureRoot, $secretRoot -Force | Out-Null
 $priorEnvironment = @{}
-foreach ($name in 'VAGRANT_HOME', 'VAGRANT_CWD', 'VAGRANT_DOTFILE_PATH', 'LBA_VM_NAME', 'LBA_VM_HOSTNAME', 'VIHS_REVIEWER_BOX') {
+foreach ($name in 'VAGRANT_HOME', 'VAGRANT_CWD', 'VAGRANT_DOTFILE_PATH', 'LBA_VM_NAME', 'LBA_VM_HOSTNAME', 'REVIEWER_BOX') {
   $priorEnvironment[$name] = [Environment]::GetEnvironmentVariable($name, 'Process')
 }
 $env:VAGRANT_HOME = (Resolve-Path -LiteralPath $VagrantHome).Path
@@ -114,7 +114,7 @@ $env:VAGRANT_CWD = $reviewerRoot
 $env:VAGRANT_DOTFILE_PATH = $stateRoot
 $env:LBA_VM_NAME = $vmName
 $env:LBA_VM_HOSTNAME = $hostname
-$env:VIHS_REVIEWER_BOX = $BoxName
+$env:REVIEWER_BOX = $BoxName
 
 $providerUuid = $null
 $hostPort = $null

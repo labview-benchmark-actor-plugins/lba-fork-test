@@ -61,8 +61,8 @@ export function buildBenchmarkActorMcpServerDefinitionFields(options: {
  *  net-only). Empty net values are omitted; the resolved lbabus executable is always provided. */
 export function busEnvFromConfig(cfg: { netHosts: string; netLog: string }, captureRoot = ''): Record<string, string> {
   const env: Record<string, string> = { LBA_LBABUS_PATH: resolveLbabusExecutable() };
-  if (cfg.netHosts) { env.VIHS_COLLAB_NET_HOSTS = cfg.netHosts; }
-  if (cfg.netLog) { env.VIHS_COLLAB_NET_LOG = cfg.netLog; }
+  if (cfg.netHosts) { env.COLLAB_NET_HOSTS = cfg.netHosts; }
+  if (cfg.netLog) { env.COLLAB_NET_LOG = cfg.netLog; }
   if (captureRoot) { env.LBA_CAPTURE_ROOT = captureRoot; }
   return env;
 }

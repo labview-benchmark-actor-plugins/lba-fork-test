@@ -15,7 +15,7 @@ set -uo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$here/.." && pwd)"
 export DOTNET_ROLL_FORWARD="${DOTNET_ROLL_FORWARD:-Major}"
-export VIHS_COLLAB_AGENT="${VIHS_COLLAB_AGENT:-vm-actor}"
+export COLLAB_AGENT="${COLLAB_AGENT:-vm-actor}"
 : "${LBABUS:=$repo/tools/collab-cli/bin/Release/net8.0/lbabus.dll}"
 export LBABUS
 run_lbabus() { case "$LBABUS" in *.dll) dotnet "$LBABUS" "$@" ;; *) "$LBABUS" "$@" ;; esac; }

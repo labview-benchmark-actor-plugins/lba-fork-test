@@ -33,7 +33,7 @@ const base = {
   packageJson: { version: extensionVersion, scripts: { package: 'vsce package --out labview-benchmark-actor.vsix' } },
   packageLock: { version: extensionVersion, packages: { '': { version: extensionVersion } } },
   agentsManifest: { version: releaseComponents.agents },
-  agentsText: `exactly \`${releaseComponents.lbabus}\` for this extension build\nbundle v${releaseComponents.humanTasks}`,
+  agentsText: `exactly \`${releaseComponents.lbabus}\` for this extension build. Else install with \`dotnet tool install --global LabViewBenchmarkActor.CollabBus --version ${releaseComponents.lbabus} --add-source <folder>\`.\nbundle v${releaseComponents.humanTasks}`,
   lbabusProject: `<Version>${releaseComponents.lbabus}</Version>`,
   humanTasksSource: `HUMAN_TASKS_VERSION = '${releaseComponents.humanTasks}'`,
   humanTaskRunner: `HUMAN_TASKS_VERSION = '${releaseComponents.humanTasks}'`,
@@ -48,6 +48,15 @@ const base = {
 };
 
 assert.equal(verifyReleaseComponents(base).ok, true);
+// The AGENTS install fallback must install the same lbabus version the preflight pins.
+assert.equal(verifyReleaseComponents({
+  ...base,
+  agentsText: base.agentsText.replace(`--version ${releaseComponents.lbabus} `, '--version 0.15.12 '),
+}).ok, false);
+assert.equal(verifyReleaseComponents({
+  ...base,
+  agentsText: `exactly \`${releaseComponents.lbabus}\` for this extension build\nbundle v${releaseComponents.humanTasks}`,
+}).ok, false);
 assert.equal(verifyReleaseComponents({
   ...base,
   components: { ...base.components, marketplaceChannel: 'prerelease' },

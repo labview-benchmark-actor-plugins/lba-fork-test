@@ -21,13 +21,13 @@ An unconfigured net-default must instead do **nothing, quietly**.
 
 - **Flip the `busTransport` default from `discussion` to `net`** across the extension, the MCP provider +
   stdio server, and `post-verdict.mjs`. Discussion becomes a **legacy opt-out**
-  (`labviewBenchmarkActor.busTransport: "discussion"` / `VIHS_COLLAB_TRANSPORT=discussion`).
+  (`labviewBenchmarkActor.busTransport: "discussion"` / `COLLAB_TRANSPORT=discussion`).
 - **Graceful no-op when unconfigured:**
   - `net poll` with **no receive-log** exits `0` with a hint (softening the ADR-0040 fail-closed to graceful).
   - The send side passes **`--skip-if-no-peer`**, so `net send` with **no peer** exits `0` with a hint (no
     dead loopback). The extension / MCP / post-verdict callers pass `--skip-if-no-peer` when no host is set.
   - An unconfigured net-default install thus does nothing (no error, no hang) until a peer (`busNetHosts` /
-    `VIHS_COLLAB_NET_HOSTS`) and/or a receive-log (`busNetLog` / `VIHS_COLLAB_NET_LOG`) is configured.
+    `COLLAB_NET_HOSTS`) and/or a receive-log (`busNetLog` / `COLLAB_NET_LOG`) is configured.
 - This is requirement **LBA-REQ-065**.
 
 ## Consequences

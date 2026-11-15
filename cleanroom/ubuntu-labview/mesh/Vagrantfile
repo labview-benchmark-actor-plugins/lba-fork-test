@@ -83,8 +83,8 @@ CLEANROOM_MANIFEST_PATH = File.expand_path("../cleanroom-manifest.json", __dir__
 raise "missing #{CLEANROOM_MANIFEST_PATH}" unless File.exist?(CLEANROOM_MANIFEST_PATH)
 LBABUS_SOURCE_REF = JSON.parse(File.read(CLEANROOM_MANIFEST_PATH)).dig("lbabus", "source_ref")
 raise "cleanroom manifest has no lbabus.source_ref" unless LBABUS_SOURCE_REF.is_a?(String) && !LBABUS_SOURCE_REF.empty?
-LBABUS_SOURCE_VERSION = LBABUS_SOURCE_REF[/\Acollab-cli-v(\d+\.\d+\.\d+)\z/, 1]
-raise "lbabus.source_ref must be a collab-cli SemVer tag, got #{LBABUS_SOURCE_REF.inspect}" unless LBABUS_SOURCE_VERSION
+LBABUS_SOURCE_VERSION = LBABUS_SOURCE_REF[/\Av(\d+\.\d+\.\d+)\z/, 1]
+raise "lbabus.source_ref must be an lbabus vX.Y.Z release tag, got #{LBABUS_SOURCE_REF.inspect}" unless LBABUS_SOURCE_VERSION
 LBABUS_PROVISIONER_SRC = File.expand_path("../provision-lbabus-fromsource.sh", __dir__)
 raise "missing #{LBABUS_PROVISIONER_SRC}" unless File.exist?(LBABUS_PROVISIONER_SRC)
 LBABUS_PROVISIONER_B64 = Base64.strict_encode64(File.read(LBABUS_PROVISIONER_SRC).gsub(/\r\n?/, "\n"))
@@ -200,7 +200,7 @@ Vagrant.configure("2") do |config|
         [Service]
         Type=simple
         TimeoutStartSec=infinity
-        Environment=VIHS_COLLAB_AGENT=#{a['actor_id']}
+        Environment=COLLAB_AGENT=#{a['actor_id']}
         Environment=LBABUS=/usr/local/bin/lbabus
         Environment=MESH_PEERS=#{peers}
         Environment=MESH_LISTENERS=#{listeners}

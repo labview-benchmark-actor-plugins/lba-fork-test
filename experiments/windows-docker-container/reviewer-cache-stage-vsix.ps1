@@ -82,7 +82,7 @@ $env:VAGRANT_CWD = $metadata.vagrant.cwd
 $env:VAGRANT_DOTFILE_PATH = $metadata.vagrant.dotfilePath
 $env:LBA_VM_NAME = $metadata.vm.name
 $env:LBA_VM_HOSTNAME = $metadata.vm.hostname
-$env:VIHS_REVIEWER_BOX = $metadata.vagrant.box
+$env:REVIEWER_BOX = $metadata.vagrant.box
 $providerId = (Get-Content (Join-Path $metadata.vagrant.dotfilePath 'machines\default\virtualbox\id') -Raw).Trim()
 if ($providerId -ne $metadata.vm.uuid) { throw 'Retained Vagrant provider UUID mismatch.' }
 $logPath = Join-Path $activeEvidenceRoot 'vsix-stage.log'

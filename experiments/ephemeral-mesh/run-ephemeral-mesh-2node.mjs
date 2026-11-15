@@ -79,7 +79,7 @@ function bidiCmd(n) {
   const listen = `${LBABUS} net listen --tcp ${TCP_PORT} --echo --count ${peerFrames} --timeout 80 > /tmp/recv.log 2>/dev/null & lp=$!`;
   const payloadLoop = `for k in $(seq 1 ${n.payloads}); do ${LBABUS} net send --hosts ${peer.ip} --tcp ${TCP_PORT} --session ${RUN} --seq $k --type PROGRESS --task typed --message "p$k" --await 2 --retries 40 --retry-ms 500 >/dev/null 2>&1; done`;
   const done = `${LBABUS} net send --hosts ${peer.ip} --tcp ${TCP_PORT} --session ${RUN} --seq ${n.payloads} --type DONE --task typed --message "final=${n.payloads}" --await 2 --retries 40 --retry-ms 500 >/dev/null 2>&1`;
-  return `${setIp}; export VIHS_COLLAB_AGENT=${n.id}; ${listen}; sleep 6; ${payloadLoop}; ${done}; echo "SENT ${n.id}"; wait $lp; echo "=== RECEIVED ${n.id} ==="; cat /tmp/recv.log`;
+  return `${setIp}; export COLLAB_AGENT=${n.id}; ${listen}; sleep 6; ${payloadLoop}; ${done}; echo "SENT ${n.id}"; wait $lp; echo "=== RECEIVED ${n.id} ==="; cat /tmp/recv.log`;
 }
 
 // Parse a `net listen` capture into a deduplicated, ingest-ordered frame log (spec §4.1).

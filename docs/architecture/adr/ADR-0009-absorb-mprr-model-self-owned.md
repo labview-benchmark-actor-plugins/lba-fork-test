@@ -48,15 +48,17 @@ framing (README, SRS, ADR-0005, ADR-0007, DOCS).
 2. **Preserve historical lineage as "why", not as a tracked external contract.** mprr
    ADR-0024 (dual-packet policy), the frozen TDMS-compatible `1.0` transport, and the
    `MPRR-REQ-*` numbers are cited as design provenance in the absorbed sources.
-3. **De-brand the absorbed material** of `vi-history-suite` (VIHS) branding: the
-   developer-convenience env var `VIHS_MPRR_ROOT` → `LBA_MPRR_ROOT` (and
-   `VIHS_CONFORMANCE_OUT` → `LBA_CONFORMANCE_OUT`), each with a back-compatible fallback
-   to the old name. A local mprr checkout is only a developer convenience for the two
+3. **De-brand the absorbed material** of `vi-history-suite` branding: the
+   developer-convenience env vars are `LBA_MPRR_ROOT` and `LBA_CONFORMANCE_OUT`. The
+   earlier vi-history-suite-prefixed names were a back-compatible fallback until 1.6.0
+   removed them (#63). A local mprr checkout is only a developer convenience for the two
    Windows-only de-risk experiments (`ocr-primitive-proof`, `self-test-conformance`), not
    a build- or run-time dependency of the extension.
-4. **The coordination-bus wire schema is out of scope.** `vihs-collab-msg@v1` and the
-   `VIHS_COLLAB_*` config are a separate, live protocol contract (ADR-0003, LBA-REQ-013)
-   pinned by CI fixtures and both running planes; they are intentionally **unchanged**.
+4. **The coordination-bus wire schema is out of scope.** The bus envelope (`labview-benchmark-actor/bus-msg@1`) and the
+   bus configuration are a separate, live protocol contract (ADR-0003, LBA-REQ-013)
+   pinned by CI fixtures and both running planes, so this de-brand left them
+   **unchanged**. 1.6.0 later dropped the vi-history-suite prefix from the bus
+   configuration, which is now `COLLAB_*` (#63, ADR-0088); the wire envelope did not change.
 
 ## Consequences
 

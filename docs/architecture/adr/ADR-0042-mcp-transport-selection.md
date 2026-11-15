@@ -15,12 +15,12 @@ too. The MCP server is a separate process, so it cannot read vscode config direc
 ## Decision
 
 - **The provider passes the transport as env.** `busEnvFromConfig` maps the extension's `busTransport` /
-  `busNetHosts` / `busNetLog` config to `VIHS_COLLAB_TRANSPORT` / `VIHS_COLLAB_NET_HOSTS` /
-  `VIHS_COLLAB_NET_LOG`, set on the launched stdio `McpStdioServerDefinition` env. Empty values are omitted →
+  `busNetHosts` / `busNetLog` config to `COLLAB_TRANSPORT` / `COLLAB_NET_HOSTS` /
+  `COLLAB_NET_LOG`, set on the launched stdio `McpStdioServerDefinition` env. Empty values are omitted →
   Discussion default.
 - **The server selects the transport from env.** `pollBusArgs` / `postNoteArgs` route `poll_coordination_bus`
   → `net poll --log` and `post_coordination_note` → `net send --hosts` under `net`, else the Discussion
-  `poll`/`post`. Same env names as the CLI (`VIHS_COLLAB_NET_LOG`) + the extension config.
+  `poll`/`post`. Same env names as the CLI (`COLLAB_NET_LOG`) + the extension config.
 - **Discussion stays the default; the tool schemas are unchanged** (no doc/registry change — the MCP tool doc
   still matches). The tools stay soft-`isError` on a missing CLI.
 

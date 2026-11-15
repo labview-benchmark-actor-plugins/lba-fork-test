@@ -45,13 +45,13 @@ $collectorJob = Start-Job -ScriptBlock {
   param($dir, $tcp, $udp)
   $env:PATH = "C:\Program Files\Vagrant\bin;" + $env:PATH
   Set-Location $dir
-  vagrant winrm actor-a -c "`$env:VIHS_COLLAB_AGENT='ACTOR-A'; lbabus net listen --tcp $tcp --udp $udp --echo --count 5 --timeout 90" 2>&1
+  vagrant winrm actor-a -c "`$env:COLLAB_AGENT='ACTOR-A'; lbabus net listen --tcp $tcp --udp $udp --echo --count 5 --timeout 90" 2>&1
 } -ArgumentList $here, $TcpPort, $UdpPort
 Start-Sleep -Seconds 12   # let vagrant winrm connect + the TCP/UDP listeners bind before the sender fires
 
 Write-Host '[topo] sender: 2 UDP presence beacons + TCP CLAIM/HANDOFF/DONE...'
 $send = @"
-`$env:VIHS_COLLAB_AGENT='ACTOR-B'
+`$env:COLLAB_AGENT='ACTOR-B'
 lbabus net beacon --host $ipA --port $UdpPort --count 2 --interval 1
 lbabus net send --host $ipA --port $TcpPort --type CLAIM --task benchmark --message 'actor-b claims benchmark slot'
 lbabus net send --host $ipA --port $TcpPort --type HANDOFF --task benchmark --message 'actor-b hands off to actor-a'

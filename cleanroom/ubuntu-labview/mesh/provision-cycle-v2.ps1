@@ -214,7 +214,7 @@ function Read-ValidatedReceipt {
     if ([string]$receipt.schema -ne $receiptSchema) { throw "receipt schema must be $receiptSchema" }
     if ([string]$receipt.outcome -ne 'success') { throw 'receipt outcome is not success' }
     if ([string]$receipt.action -notin @('replace', 'apply-refresh', 'apply-verify')) { throw 'receipt action is unsupported' }
-    if ([string]$receipt.sourceRef -notmatch '^collab-cli-v\d+\.\d+\.\d+$') { throw 'receipt sourceRef is invalid' }
+    if ([string]$receipt.sourceRef -notmatch '^(collab-cli-)?v\d+\.\d+\.\d+$') { throw 'receipt sourceRef is invalid' }
     $completedAt = [datetime]::MinValue
     if (-not [datetime]::TryParseExact([string]$receipt.completedAt, 'o', [System.Globalization.CultureInfo]::InvariantCulture, [System.Globalization.DateTimeStyles]::RoundtripKind, [ref]$completedAt) -or $completedAt.Kind -ne [DateTimeKind]::Utc) {
       throw 'receipt completedAt must be a UTC ISO-8601 round-trip timestamp'
@@ -231,7 +231,7 @@ function Read-ValidatedReceipt {
       $actualActor = @($proof.PSObject.Properties.Name)
       if (@($allowedActor | Where-Object { $actualActor -notcontains $_ }).Count -gt 0 -or @($allowedActor | Where-Object { $actualActor -notcontains $_ }).Count -gt 0) { throw 'receipt actor proof fields are invalid' }
       if ([string]$proof.nodeType -notin @('source', 'sink', 'both')) { throw "receipt actor $($proof.hostname) has invalid nodeType" }
-      if ([string]$proof.lbabusVersion -ne ([string]$receipt.sourceRef).Substring(12)) { throw "receipt actor $($proof.hostname) has inconsistent lbabusVersion" }
+      if ([string]$proof.lbabusVersion -ne (([string]$receipt.sourceRef) -replace '^(collab-cli-)?v', '')) { throw "receipt actor $($proof.hostname) has inconsistent lbabusVersion" }
       if ([string]$proof.meshMarker -ne (Get-MeshSuccessMarker -NodeType ([string]$proof.nodeType))) { throw "receipt actor $($proof.hostname) has inconsistent meshMarker" }
       if ([string]$proof.verification -ne "lbabus=$($proof.lbabusVersion) nodeType=$($proof.nodeType) meshProof=ok") { throw "receipt actor $($proof.hostname) has malformed verification" }
     }
@@ -330,7 +330,7 @@ if ($SelfTest) {
     [pscustomobject][ordered]@{ actorId = '2'; hostname = 'actor2'; ip = '192.168.56.12'; tcpPort = 7420; udpPort = 7421; nodeType = 'both'; lbabusVersion = $version; meshMarker = 'MESH OK (TCP+UDP)'; verification = "lbabus=$version nodeType=both meshProof=ok" }
   )
   $topology = Get-NormalizedTopology -Actors $proofs -IdField 'actorId' -TcpField 'tcpPort' -UdpField 'udpPort' -NodeTypeField 'nodeType'
-  $inputs = [pscustomobject][ordered]@{ sourceRef = "collab-cli-v$version"; topologyHash = Get-Sha256Text -Text (ConvertTo-CompactJson -Value $topology -Depth 4); registryHash = $hashA; vagrantfileHash = $hashA; provisionerHash = $hashA; meshWorkerHash = $hashA }
+  $inputs = [pscustomobject][ordered]@{ sourceRef = "v$version"; topologyHash = Get-Sha256Text -Text (ConvertTo-CompactJson -Value $topology -Depth 4); registryHash = $hashA; vagrantfileHash = $hashA; provisionerHash = $hashA; meshWorkerHash = $hashA }
   $receipt = New-Receipt -Action 'apply-verify' -Inputs $inputs -ActorProofs $proofs -Provider 'vmware_desktop'
   $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) ("lba-mesh-cycle-" + [Guid]::NewGuid().ToString('N'))
   $tempReceipt = Join-Path $tempRoot 'receipt.json'
@@ -338,8 +338,16 @@ if ($SelfTest) {
     Write-AtomicUtf8Json -Path $tempReceipt -Value $receipt
     $validated = Read-ValidatedReceipt -Path $tempReceipt
     if (-not $validated.valid) { throw "self-test receipt must validate: $($validated.findings -join '; ')" }
+    $legacyInputs = $inputs | Select-Object *
+    $legacyInputs.sourceRef = "collab-cli-v$version"
+    $legacyReceipt = New-Receipt -Action 'apply-verify' -Inputs $legacyInputs -ActorProofs $proofs -Provider 'vmware_desktop'
+    $legacyPath = Join-Path $tempRoot 'legacy-receipt.json'
+    Write-AtomicUtf8Json -Path $legacyPath -Value $legacyReceipt
+    $legacyValidated = Read-ValidatedReceipt -Path $legacyPath
+    if (-not $legacyValidated.valid) { throw "self-test legacy collab-cli receipt must validate: $($legacyValidated.findings -join '; ')" }
+    if ((Get-DriftClassification -Receipt $legacyReceipt -Inputs $inputs -Provider 'vmware_desktop').kind -ne 'apply-refresh') { throw 'self-test expected a legacy collab-cli receipt to refresh to the lbabus tag' }
     if ((Get-DriftClassification -Receipt $receipt -Inputs $inputs -Provider 'vmware_desktop').kind -ne 'apply-verify') { throw 'self-test expected apply-verify' }
-    $refreshInputs = [pscustomobject][ordered]@{ sourceRef = 'collab-cli-v0.15.1'; topologyHash = $inputs.topologyHash; registryHash = $inputs.registryHash; vagrantfileHash = $inputs.vagrantfileHash; provisionerHash = $inputs.provisionerHash; meshWorkerHash = $inputs.meshWorkerHash }
+    $refreshInputs = [pscustomobject][ordered]@{ sourceRef = 'v0.15.1'; topologyHash = $inputs.topologyHash; registryHash = $inputs.registryHash; vagrantfileHash = $inputs.vagrantfileHash; provisionerHash = $inputs.provisionerHash; meshWorkerHash = $inputs.meshWorkerHash }
     if ((Get-DriftClassification -Receipt $receipt -Inputs $refreshInputs -Provider 'vmware_desktop').kind -ne 'apply-refresh') { throw 'self-test expected apply-refresh' }
     $replaceInputs = [pscustomobject][ordered]@{ sourceRef = $inputs.sourceRef; topologyHash = $hashB; registryHash = $inputs.registryHash; vagrantfileHash = $inputs.vagrantfileHash; provisionerHash = $inputs.provisionerHash; meshWorkerHash = $inputs.meshWorkerHash }
     if ((Get-DriftClassification -Receipt $receipt -Inputs $replaceInputs -Provider 'vmware_desktop').kind -ne 'replace-required') { throw 'self-test expected replace-required' }
@@ -367,7 +375,7 @@ if ($SelfTest) {
     $sourcePeers = Get-ExpectedMeshPeerSets -Actor $typedActors[0] -Actors $typedActors
     if ($sourcePeers.listeners -ne '192.168.56.12,192.168.56.13' -or $sourcePeers.emitters -ne '192.168.56.12') { throw 'self-test expected typed listener and emitter peer sets' }
     if ($scriptText -notmatch 'MESH_LISTENERS' -or $scriptText -notmatch 'MESH_EMITTERS' -or $scriptText -notmatch 'canonical_peers') { throw 'self-test expected guest typed-peer verification before mesh proof' }
-    Write-Output 'mesh provision cycle self-test passed: canonical receipt, tamper rejection, and drift classification'
+    Write-Output 'mesh provision cycle self-test passed: canonical receipt (vX.Y.Z and legacy collab-cli-vX.Y.Z), tamper rejection, and drift classification'
   } finally { Remove-Item -LiteralPath $tempRoot -Recurse -Force -ErrorAction SilentlyContinue }
   return
 }
@@ -383,7 +391,7 @@ $actors = Read-ActorRegistry -Path $registryPath
 Assert-ActorTopology -Actors $actors
 $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 $sourceRef = [string]$manifest.lbabus.source_ref
-if ($sourceRef -notmatch '^collab-cli-v(\d+\.\d+\.\d+)$') { throw "cleanroom manifest has invalid lbabus.source_ref '$sourceRef'" }
+if ($sourceRef -notmatch '^v(\d+\.\d+\.\d+)$') { throw "cleanroom manifest has invalid lbabus.source_ref '$sourceRef'" }
 $expectedVersion = $Matches[1]
 $inputs = Get-InputState -Actors $actors -SourceRef $sourceRef
 $prior = Read-ValidatedReceipt -Path $receiptPath

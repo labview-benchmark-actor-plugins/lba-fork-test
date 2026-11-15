@@ -75,7 +75,7 @@ function Set-VagrantEnvironment {
   $env:VAGRANT_DOTFILE_PATH = $statePath
   $env:LBA_VM_NAME = $VmName
   $env:LBA_VM_HOSTNAME = $Hostname
-  $env:VIHS_REVIEWER_BOX = $BoxName
+  $env:REVIEWER_BOX = $BoxName
 }
 
 function Read-CacheMetadata {

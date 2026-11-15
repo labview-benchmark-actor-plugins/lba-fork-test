@@ -115,7 +115,7 @@ try {
   const hostname = sshCapture('hostname', 20).stdout.trim();
   const user = sshCapture('whoami', 20).stdout.trim();
   const lbabusVersion = (sshCapture('/usr/local/bin/lbabus --version 2>/dev/null | head -1', 20).stdout.trim()) || 'unknown';
-  const meshIdentity = (/VIHS_COLLAB_AGENT=(\S+)/.exec(sshCapture('cat /etc/lba-mesh-actor 2>/dev/null', 20).stdout) || [])[1] || null;
+  const meshIdentity = (/COLLAB_AGENT=(\S+)/.exec(sshCapture('cat /etc/lba-mesh-actor 2>/dev/null', 20).stdout) || [])[1] || null;
   log(`node: host=${hostname} user=${user} lbabus=${lbabusVersion} identity=${meshIdentity}`);
 
   // 6. Copy + run the loopback MESH-OK proof inside the clone.

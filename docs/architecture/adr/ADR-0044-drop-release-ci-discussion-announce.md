@@ -23,7 +23,7 @@ rekor) with the `.vsix`.
   release-agreement (`verify-visual-review` gates the release on it). A remote actor reads the verdict from the
   repo (git), not a Discussion.
 - **Live announce stays available off-CI.** A reviewer/actor with a configured peer announces over `net` via
-  `post-verdict.mjs` (`VIHS_COLLAB_TRANSPORT=net`, ADR-0043) or the extension (ADR-0041) — the proven live flow
+  `post-verdict.mjs` (`COLLAB_TRANSPORT=net`, ADR-0043) or the extension (ADR-0041) — the proven live flow
   (ADR-0039).
 - **Supersedes the CI-announce portion of ADR-0038 / LBA-REQ-058.** The verdict is still announced by the
   extension + `post-verdict.mjs` (now net-capable); only the CI Discussion announce is removed.

@@ -22,7 +22,7 @@ point() {
   sleep 2
   local t0 t1 pids=""; t0=$(date +%s.%N)
   for s in $(seq 1 "$F"); do
-    ( export VIHS_COLLAB_AGENT="src$s"
+    ( export COLLAB_AGENT="src$s"
       for k in $(seq 1 "$PER"); do
         run_lbabus net send --hosts 127.0.0.1 --tcp "$PORT" --session RUN --seq "$k" \
           --type PROGRESS --task stress --message p --await 1 --retries 3 --retry-ms 200 >/dev/null 2>&1

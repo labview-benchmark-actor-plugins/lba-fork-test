@@ -1,0 +1,50 @@
+# ADR-0089: Generate the repository wiki as an Obsidian vault from docs/
+
+- Status: Accepted
+- Date: 2026-11-15
+- Owner: LINUX
+- Traces to: LBA-REQ-103
+
+## Context
+
+The operator rejected the 1.5.2 Marketplace deployment partly because the wiki could not be opened in Obsidian (#64).
+The wiki held a single one-line `Home.md`, while all documentation lived in `docs/`: the SRS, the RTM, the ADRs, the
+test plan and report, the CM plan, the release runbook, and the information for users.
+
+The [projectbuddy wiki](https://github.com/VITechnologies/projectbuddy/wiki) is the reference: a committed
+`.obsidian/` folder, `[[wikilinks]]`, small linked notes, and the specification notes at the root. A hand-maintained
+copy of `docs/` would drift from the sources the gates govern.
+
+## Decision
+
+- `docs/` stays the single source of truth. `scripts/build-wiki.mjs` (dependency-free and deterministic) generates the
+  whole wiki from it:
+  - `Home` and `_Sidebar`;
+  - the specification notes: `Software-Requirements-Specification`, `Requirements-Traceability-Matrix`,
+    `Architecture-Packet`, and `ADR-Index`;
+  - one note per requirement (`requirements/LBA-REQ-NNN`), test item (`tests/T-NNN`), and ADR
+    (`architecture/ADR-NNNN`);
+  - every other `docs/` page, the documentation images, and the `.obsidian/` settings.
+- A requirement note combines the governed register row, the acceptance detail, and traceability from the RTM, the
+  architecture description, and the ADR index "Traces to" column, so every requirement links its tests and decisions.
+- Links are alias-free `[[Page]]` wikilinks, because Obsidian reads `[[Page|alias]]` while the GitHub wiki reads
+  `[[alias|Page]]`. Links to other repository files become GitHub URLs on `develop`, and explicit `owner/repo#N`
+  references become issue URLs. A bare `#N` stays text: `docs/` also uses it for other repositories' items,
+  acceptance criteria, and gate numbers. Page names use only letters, digits, `-`, and `_`, and are unique regardless
+  of case.
+- `--out` prunes files the vault does not contain, so it writes only into an empty directory, a wiki clone, or a vault
+  the generator wrote before, and never into the repository or one of its parents.
+- The `wiki-vault` gate validates the generated vault and proves each detector with a negative control. The
+  `wiki-publish` workflow regenerates the wiki on every `develop` change to `docs/`, pushes it to the `.wiki.git`
+  repository with the workflow token, then re-clones it and runs `--check` to prove the published wiki has not
+  drifted.
+- The wiki follows `develop`, the integration branch, like the projectbuddy wiki. Each requirement note shows its RTM
+  status, so unreleased work is visible as such.
+
+## Consequences
+
+- A clone of the wiki opens as an Obsidian vault with one connected graph: every note is reachable from `Home`.
+- Nobody edits the wiki directly; the next publish overwrites a direct edit.
+- `docs/requirements/traceability-matrix.md` is not copied. The wiki renders its own matrix, with wikilinks, from the
+  same sources.
+- The wiki is about 3 MB, mostly the screenshots of the Ubuntu installation guide.

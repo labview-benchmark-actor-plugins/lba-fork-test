@@ -14,8 +14,8 @@ This is the **LINUX** implementation, proven end-to-end and parity-checked again
  host (ollama-governed)                         bare container (no .NET, no WAN)
  ┌─────────────────────────────┐                ┌────────────────────────────────┐
  │ ollama (GPU) --generates-->  │  lbabus net    │  lbabus net listen --echo       │
- │ lbabus net send  ───────────────────────────▶ │  (VIHS_COLLAB_AGENT=CONTAINER)  │
- │ (VIHS_COLLAB_AGENT=LINUX-HOST)│  bus-msg@1     │  prints + ACKs each frame       │
+ │ lbabus net send  ───────────────────────────▶ │  (COLLAB_AGENT=CONTAINER)  │
+ │ (COLLAB_AGENT=LINUX-HOST)│  bus-msg@1     │  prints + ACKs each frame       │
  └─────────────────────────────┘   ◀─── ACK ─────┴────────────────────────────────┘
 ```
 

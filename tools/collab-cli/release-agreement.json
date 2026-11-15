@@ -1103,6 +1103,73 @@
               "signature": "T4I0L9w45ABOFnvu6rRJZRr777ZB0h9pY9wtyMGyU+QuKxETfeUkgW/6n8A33duhgXCUuMf9wYvFcl7UEjB+AQ=="
             }
           }
+        },
+        "1.6.0": {
+          "summary": "Extension 1.6.0 stable release: Obsidian-ready wiki generated from docs/, inherited environment-variable prefix removed, lbabus 0.16.0 from its own repository, Marketplace Trusted Publishing",
+          "signoffs": {
+            "WIN": {
+              "agreed": true,
+              "reviewedCommit": "3b6d0ce1343135113c9dc5a1263c23e6cfd08350",
+              "at": "2026-11-15T10:37:24.116Z",
+              "note": "Reviewer VM staged exact VSIX SHA-256 23276923c46e8e48f2b15391b328e1a6cf6492b825b092e4afff1ae3f41004ed and emitted correlated DONE stage-1.6.0-3b6d0ce-json."
+            },
+            "LINUX": {
+              "agreed": true,
+              "reviewedCommit": "3b6d0ce1343135113c9dc5a1263c23e6cfd08350",
+              "at": "2026-11-15T10:37:24.116Z",
+              "note": "Cross-plane corroboration run 43703284448 and attestation 6ba4fc0ec4dcc2903718d11bb793903a4f79f6f2a912fe2442099e33be69dd85 passed."
+            }
+          },
+          "visualReview": {
+            "verdict": {
+              "schema": "labview-benchmark-actor/reviewer-verdict@1",
+              "target": {
+                "component": "extension",
+                "version": "1.6.0",
+                "commit": "3b6d0ce1343135113c9dc5a1263c23e6cfd08350",
+                "vsixSha256": "23276923c46e8e48f2b15391b328e1a6cf6492b825b092e4afff1ae3f41004ed"
+              },
+              "verdict": "pass",
+              "reviewer": "reviewer@vi-tech.nl",
+              "station": "WINDOWS_VM",
+              "notes": "I used a new VI from examples that allows to write at faster throughputs, you should consider investigating it (one of the markers from latest capture points to the point in time i was running the VI, which should exist also in at least docker windows container).",
+              "evidence": [
+                {
+                  "kind": "cross-plane-run",
+                  "ref": "43703284448"
+                },
+                {
+                  "kind": "attestation-sha256",
+                  "ref": "6ba4fc0ec4dcc2903718d11bb793903a4f79f6f2a912fe2442099e33be69dd85"
+                },
+                {
+                  "kind": "windows-stage",
+                  "ref": "stage-1.6.0-3b6d0ce-json"
+                }
+              ],
+              "renderedAt": "2026-11-15T10:34:27.369Z"
+            },
+            "signOff": {
+              "schema": "labview-benchmark-actor/acg-human-signoff-v1",
+              "subject": {
+                "verdictDigest": "d44f098400a05e6e4749b1d34b1ee3606d62edf9be60f934e6a7a58da8c781e9",
+                "consensusVerdict": "pass",
+                "target": {
+                  "component": "extension",
+                  "version": "1.6.0",
+                  "commit": "3b6d0ce1343135113c9dc5a1263c23e6cfd08350",
+                  "vsixSha256": "23276923c46e8e48f2b15391b328e1a6cf6492b825b092e4afff1ae3f41004ed"
+                }
+              },
+              "reviewer": "reviewer@vi-tech.nl",
+              "decision": "approve",
+              "station": "WINDOWS_VM",
+              "algorithm": "ed25519",
+              "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAVqytkn57+6VMaH4gOaP/DJkERoYiWM4KVmFoc8b8vrQ=\n-----END PUBLIC KEY-----\n",
+              "signedAt": "2026-11-15T10:34:27.375Z",
+              "signature": "6RtWAsGs5SzjD4UQ2XK09vowIh4/ZUejtc4pu8q2XRQMCMZhtdOlqvJEk6hFWNkxm5ToVRIP4Qs9SGVcoLQhBA=="
+            }
+          }
         }
       }
     }

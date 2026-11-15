@@ -155,7 +155,7 @@ function Send-Response {
   try {
     [IO.File]::WriteAllText($messagePath, "$(ConvertTo-Json $envelope -Depth 30 -Compress)`n", $Utf8NoBom)
     $type = if ($Status -eq 'SUCCESS' -or $Status -eq 'FAILED') { 'DONE' } else { 'ACK' }
-    $env:VIHS_COLLAB_AGENT = $Config.actorId
+    $env:COLLAB_AGENT = $Config.actorId
     & $Config.lbabusPath net send --hosts $Config.controllerHost --tcp $Config.tcpPort --session $Config.session --type $type --task $Request.taskId --message-file $messagePath | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'lbabus response send failed' }
     Write-ActorEvent 'response-sent' $Request.taskId $Status
@@ -182,7 +182,7 @@ if (Test-Path -LiteralPath $Config.statePath) {
   Write-AtomicJson $Config.statePath $State
 }
 
-$env:VIHS_COLLAB_AGENT = $Config.actorId
+$env:COLLAB_AGENT = $Config.actorId
 $listenerStdout = Join-Path $Config.runtimeDir 'lbabus-listener.stdout.log'
 $listenerStderr = Join-Path $Config.runtimeDir 'lbabus-listener.stderr.log'
 $listener = Start-Process -FilePath $Config.lbabusPath -ArgumentList @('net','listen','--tcp',$Config.tcpPort,'--bind','0.0.0.0','--session',$Config.session,'--log',$Config.logPath) -WindowStyle Hidden -RedirectStandardOutput $listenerStdout -RedirectStandardError $listenerStderr -PassThru

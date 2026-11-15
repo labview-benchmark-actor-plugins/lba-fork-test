@@ -19,10 +19,10 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 
-const MPRR = process.env.LBA_MPRR_ROOT || process.env.VIHS_MPRR_ROOT;
+const MPRR = process.env.LBA_MPRR_ROOT;
 if (!MPRR) { console.error('Set LBA_MPRR_ROOT to an mprr checkout (develop).'); process.exit(64); }
 const INPUTS = path.join(__dirname, 'inputs');
-const OUT = process.env.LBA_CONFORMANCE_OUT || process.env.VIHS_CONFORMANCE_OUT || path.join(os.tmpdir(), 'mprr-self-test-conformance-out');
+const OUT = process.env.LBA_CONFORMANCE_OUT || path.join(os.tmpdir(), 'mprr-self-test-conformance-out');
 
 const mod = require(path.join(MPRR, 'scripts', 'vmLiveStopwatchTimingValidation.js'));
 const decode = mod.extractBinaryStripReadingFromPortableGrayMap;

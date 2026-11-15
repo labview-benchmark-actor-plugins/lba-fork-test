@@ -6,6 +6,39 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-15
+
+1.5.2 was released on GitHub (`ext-v1.5.2`) but not published to the Marketplace; 1.6.0 replaces it there.
+
+### Added
+
+- An Obsidian-ready wiki generated from `docs/` (#64, ADR-0089, LBA-REQ-103). `scripts/build-wiki.mjs` builds a vault
+  with one note per requirement, test item, and decision, linked with plain `[[Page]]` wikilinks; the `wiki-publish`
+  workflow publishes it from `develop` and verifies the published wiki against the generator. Clone
+  `labview-benchmark-actor.wiki.git` and open it as a vault. The `wiki-vault` gate validates the vault.
+
+### Changed
+
+- **Breaking for tooling environments:** every environment variable drops the prefix inherited from
+  vi-history-suite (#63). For example the reviewer box's release source is now `REVIEWER_REPO`, and the bus contract
+  is `COLLAB_AGENT`, `COLLAB_TRANSPORT`, `COLLAB_NET_HOSTS`, and `COLLAB_NET_LOG`. Set the new names; the old ones
+  are no longer read. Earlier entries in this changelog use the new names. The de-branded experiments read only
+  `LBA_MPRR_ROOT` and `LBA_CONFORMANCE_OUT`.
+- lbabus moved to its own repository, [svelderrainruiz/lbabus](https://github.com/svelderrainruiz/lbabus), and this
+  extension vendors its pinned 0.16.0 release (ADR-0088). The `lbabus-vendored-mirror` gate keeps `tools/collab-cli`
+  equal to that release.
+- Documentation names the live bus envelope `labview-benchmark-actor/bus-msg@1` instead of the retired
+  Discussion-era message name, and the experiment bus-shape detectors look for `bus-msg@1`.
+- A `no-vihs-prefix` gate fails on any reintroduced prefix or old message name.
+- The Ubuntu clean room builds lbabus 0.16.0 from svelderrainruiz/lbabus (`cleanroom-manifest.json`
+  `lbabus.source_ref` is `v0.16.0`), so mesh nodes read the renamed `COLLAB_*` variables. The
+  `cleanroom-lbabus-pin-matches-release` gate keeps that pin equal to the vendored lbabus version. The mesh lifecycle
+  accepts receipts with either tag form, and the `mesh-provision-cycle-selftest` gate runs its self-test.
+- The AGENTS contract's lbabus install fallback installs 0.16.0 from the lbabus release asset, and the release
+  metadata check fails when that command names a different version.
+- The mesh Vagrantfile's typed-peer wiring and the requirements-coverage ledger are now checked by this repository's
+  gate suite (`mesh-typed-peer-routing`, `reqs-coverage-ledger`) rather than by the vendored lbabus harness.
+
 ## [1.5.2] - 2026-11-14
 
 1.5.0 and 1.5.1 were not released separately; their changes ship in 1.5.2.
@@ -370,7 +403,7 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 - **Flip the coordination default to `net` + graceful no-op — off GitHub Discussions, step 6** (ADR-0045,
   LBA-REQ-065). `labviewBenchmarkActor.busTransport` now defaults to the live-only `lbabus net` TCP bus across
   the extension, the MCP tools, and `post-verdict.mjs`; GitHub Discussion becomes a legacy opt-out
-  (`busTransport: "discussion"` / `VIHS_COLLAB_TRANSPORT=discussion`). An unconfigured net-default install is a
+  (`busTransport: "discussion"` / `COLLAB_TRANSPORT=discussion`). An unconfigured net-default install is a
   silent no-op — `net poll` with no receive-log and `net send --skip-if-no-peer` with no peer both exit 0 with a
   hint (the poll fail-closed of ADR-0040 is softened to graceful; no dead loopback). Gated by
   `net-default-graceful` + `bus-transport-select` (default is `net`).
@@ -381,8 +414,8 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
   `post-verdict.mjs` / the extension. Removes the last GitHub-Discussion dependency from the publish pipeline.
   Gated by `release-no-discussion-announce`.
 - **Verdict announcer transport selection — off GitHub Discussions, step 4** (ADR-0043, LBA-REQ-063).
-  `reviewer-workstation/post-verdict.mjs` now honors the same switch: under `VIHS_COLLAB_TRANSPORT=net` (+
-  `VIHS_COLLAB_NET_HOSTS`) it announces a signed verdict via `net send` with the same semantic type, else the
+  `reviewer-workstation/post-verdict.mjs` now honors the same switch: under `COLLAB_TRANSPORT=net` (+
+  `COLLAB_NET_HOSTS`) it announces a signed verdict via `net send` with the same semantic type, else the
   Discussion `post` (default). `--print-args` honors it, so the release workflow is unchanged at the default.
   Gated by `post-verdict-net-transport`.
 - **MCP tools bus transport selection — off GitHub Discussions, step 3** (ADR-0042, LBA-REQ-062). The
