@@ -208,9 +208,10 @@ function defaultIo() {
         rmSync(dir, { recursive: true, force: true });
       }
     },
-    // The listener runs in its own process group so stop() also ends the lbabus child that holds the TCP port.
+    // The listener stays in the terminal's process group, so Ctrl+C also reaches it; stop() relies on
+    // await-agent-reply forwarding SIGTERM to the lbabus child that holds the TCP port.
     startListener: (args, env) => {
-      const child = spawn(process.execPath, args, { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
+      const child = spawn(process.execPath, args, { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
       let stdout = '';
       let stderr = '';
       let markReady;
@@ -218,8 +219,7 @@ function defaultIo() {
       child.stdout.on('data', (d) => { stdout += d; });
       child.stderr.on('data', (d) => { stderr += d; if (/listening/.test(stderr)) markReady(true); });
       const done = new Promise((resolveDone) => child.on('close', (code) => { markReady(false); resolveDone({ code, stdout, stderr }); }));
-      const stop = () => { try { process.kill(-child.pid, 'SIGTERM'); } catch { child.kill('SIGTERM'); } };
-      return { ready, done, stop };
+      return { ready, done, stop: () => child.kill('SIGTERM') };
     },
     // True when a socket is in LISTEN state on the port. On Linux this reads the kernel tables without touching the
     // port, so the readiness poll cannot race the listener's own bind; elsewhere it falls back to a bind probe.
