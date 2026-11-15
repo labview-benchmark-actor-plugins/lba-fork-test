@@ -246,7 +246,8 @@ jobs:
     # the human reviewer-VM last gate and the bidirectional WIN <-> LINUX agreement gate (the `release` job's
     # needs). It publishes the canonical GitHub Release asset only when its sha256 equals the artifact staged,
     # tested, and agreement-gated by this run. Packaging stays on the repository's pinned vsce; only the upload
-    # uses the pinned @vscode/vsce that supports --oidc.
+    # uses the @vscode/vsce that supports --oidc, installed from its committed lockfile with scripts disabled so
+    # no unpinned code runs in the job that can mint the publish credential.
     needs: [release]
     if: ${{ github.repository == 'svelderrainruiz/labview-benchmark-actor' && github.event_name == 'workflow_dispatch' && inputs.publish_marketplace }}
     runs-on: ubuntu-latest
@@ -262,6 +263,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version-file: .nvmrc
+
+      - name: Install the pinned Marketplace publishing tool
+        run: npm ci --prefix .github/marketplace-publish --ignore-scripts --no-audit --no-fund
 
       - name: Download the staged, agreement-gated artifact
         uses: actions/download-artifact@v4
@@ -286,4 +290,4 @@ jobs:
             echo "::error::Canonical GitHub Release VSIX differs from the staged Marketplace candidate." >&2
             exit 1
           fi
-          npx --yes @vscode/vsce@4.1.1 publish --packagePath "$release_dir/labview-benchmark-actor-${VERSION}.vsix" --oidc
+          .github/marketplace-publish/node_modules/.bin/vsce publish --packagePath "$release_dir/labview-benchmark-actor-${VERSION}.vsix" --oidc
