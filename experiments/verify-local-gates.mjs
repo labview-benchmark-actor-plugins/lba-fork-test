@@ -1275,6 +1275,18 @@ check('reviewer-workstation-keyless-verify-wired', () => {
   const norm = readFileSync(join(pkgRoot, 'reviewer-workstation', 'provision.ps1'), 'utf8').replace(/\r\n/g, '\n');
   assert(/cosign verify-blob/.test(norm), 'provision.ps1 must cosign verify-blob the .vsix keyless signature');
   assert(/certificate-identity-regexp/.test(norm) && /extension-release/.test(norm), 'the cosign verify must pin the extension-release workflow certificate identity');
+  // The pinned identity must name the canonical repository (package.json) and accept the identity the live
+  // release workflow actually signs with (workflow_dispatch on main), never a retired owner.
+  const identitySource = /\$KeylessIdentityRegexp = '([^']+)'/.exec(norm)?.[1];
+  assert(identitySource, 'provision.ps1 must define $KeylessIdentityRegexp');
+  const identity = new RegExp(identitySource);
+  const repoPath = readJson('package.json').repository.url.replace(/\.git$/, '').replace(/^https:\/\/github\.com\//, '');
+  const signer = (ref) => `https://github.com/${repoPath}/.github/workflows/extension-release.yml@${ref}`;
+  assert(identity.test(signer('refs/heads/main')) && identity.test(signer('refs/tags/ext-v1.5.2')), 'the keyless identity must accept the canonical release workflow on main and on ext-v* tags');
+  assert(!identity.test(signer('refs/heads/feature/x')) && !identity.test('https://github.com/LabVIEW-Community-CI-CD/labview-benchmark-actor/.github/workflows/extension-release.yml@refs/heads/main'),
+    'the keyless identity must reject other refs and the retired owner');
+  const vagrantfile = readFileSync(join(pkgRoot, 'reviewer-workstation', 'Vagrantfile'), 'utf8');
+  assert(vagrantfile.includes(`ENV.fetch("VIHS_REVIEWER_REPO", "${repoPath}")`), 'reviewer provisioning must download releases from the canonical repository by default');
   assert(/token\.actions\.githubusercontent\.com/.test(norm), 'the cosign verify must pin the GitHub Actions OIDC issuer');
   const verifyAt = norm.indexOf('Assert-VsixKeylessSignature -ExtTag');
   const installAt = norm.indexOf('Install-ExtensionForInteractiveUser $vsix');

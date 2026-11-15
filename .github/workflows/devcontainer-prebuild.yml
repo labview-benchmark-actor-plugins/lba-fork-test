@@ -7,11 +7,11 @@ name: devcontainer-prebuild
 #
 # Shared cross-plane contract (WIN-agreed on lbabus task `devcontainer-prebuild-publish`):
 #   image ghcr.io/svelderrainruiz/labview-benchmark-actor-devcontainer; tags latest + <sha>
-#   (+ :X.Y.Z on a devcontainer-vX.Y.Z tag). Published ONLY from the fork
+#   (+ :X.Y.Z on a devcontainer-vX.Y.Z tag). Published ONLY from the canonical repository
 #   svelderrainruiz/labview-benchmark-actor (the extension's publish home); its owner sets the
-#   package PUBLIC with no org-admin dependency. Org repo + other forks + PRs are build-only.
-#   Keep the image secret-free -- base node:1-22 + dotnet 8.0 only, published via the fork's
-#   ephemeral GITHUB_TOKEN. Seed :latest once (fork main-push or workflow_dispatch) before the
+#   package PUBLIC with no org-admin dependency. Forks + PRs are build-only.
+#   Keep the image secret-free -- base node:1-22 + dotnet 8.0 only, published via the repository's
+#   ephemeral GITHUB_TOKEN. Seed :latest once (main push or workflow_dispatch) before the
 #   runtime :latest reference resolves.
 
 on:
@@ -63,9 +63,9 @@ jobs:
           fi
           echo "tags=${tags}" >> "$GITHUB_OUTPUT"
 
-      # Builds from the recipe (base image + dotnet feature baked in). Publishes ONLY from the fork:
-      # push to main / tag / dispatch on svelderrainruiz/labview-benchmark-actor => build + push;
-      # PRs and any other repo (incl. the org) => build-only validation.
+      # Builds from the recipe (base image + dotnet feature baked in). Publishes ONLY from the canonical
+      # repository: push to main / tag / dispatch on svelderrainruiz/labview-benchmark-actor => build + push;
+      # PRs and any other repository (forks) => build-only validation.
       - name: Build and publish
         uses: devcontainers/ci@v0.3
         with:
