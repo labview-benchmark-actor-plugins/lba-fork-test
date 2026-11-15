@@ -156,9 +156,12 @@ export function verifyStagedReleaseMetadata({ staged, unstaged, previous, curren
   const reasons = [];
   const changed = (prefixes) => staged.some((file) => prefixes.some((prefix) => file === prefix || file.startsWith(`${prefix}/`)));
   const agentsChanged = changed(['extension-agents', 'release-risk-baseline.json', 'standards-score-baseline.json']);
+  // The release agreement and the reviewer allowlist are release-governance data read by the Node release
+  // tools; lbabus neither embeds nor reads them, so sealing or enrolling keys does not change its identity.
+  const lbabusReleaseData = ['tools/collab-cli/release-agreement.json', 'tools/collab-cli/reviewer-allowlist.json'];
   const lbabusChanged = staged.some((file) => (
     (file === 'tools/collab-cli' || file.startsWith('tools/collab-cli/'))
-    && file !== 'tools/collab-cli/release-agreement.json'
+    && !lbabusReleaseData.includes(file)
   ));
   const tasksChanged = changed([
     'extension-tasks',

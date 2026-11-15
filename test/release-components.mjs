@@ -118,6 +118,13 @@ assert.equal(verifyStagedReleaseMetadata({
   previous: base.components,
   current: base.components,
 }).ok, true);
+// Enrolling a release's reviewer keys is release data, not an lbabus change.
+assert.equal(verifyStagedReleaseMetadata({
+  staged: ['tools/collab-cli/reviewer-allowlist.json'],
+  unstaged: [],
+  previous: base.components,
+  current: base.components,
+}).ok, true);
 assert.equal(verifyStagedReleaseMetadata({
   staged: ['tools/collab-cli/Program.cs'],
   unstaged: [],
