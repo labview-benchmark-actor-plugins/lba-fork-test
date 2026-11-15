@@ -1036,6 +1036,60 @@
               "signature": "36kBj0rI0i9cWk+ScLOM6ENQNf1+oci0bzHN4MySU1e4jZ+XAz5irJr1xz1B1mpOGu9Q5T8SHhZ9pCJr8JcgDA=="
             }
           }
+        },
+        "1.5.2": {
+          "summary": "Extension 1.5.2 stable release: RSR v0.4.2 consumer kit and re-certified standards baseline, canonical repository links",
+          "signoffs": {
+            "WIN": {
+              "agreed": true,
+              "reviewedCommit": "9328747c6574ceff2a7a5ac083cf48d890872aa4",
+              "at": "2026-11-15T07:33:39.132Z",
+              "note": "Reviewer VM staged exact VSIX SHA-256 113ba0f653ee56f785aa0ada619abc7f991e98ef9cfce22e221a13d8a8d9d1b0 and emitted correlated DONE stage-1.5.2-9328747-json."
+            },
+            "LINUX": {
+              "agreed": true,
+              "reviewedCommit": "9328747c6574ceff2a7a5ac083cf48d890872aa4",
+              "at": "2026-11-15T07:33:39.132Z",
+              "note": "Cross-plane corroboration run 43688424233 and attestation b329ded8157cb7922f30419e23411392896d7690c0229fab00e3a1630e6d4e20 passed."
+            }
+          },
+          "visualReview": {
+            "verdict": {
+              "schema": "labview-benchmark-actor/reviewer-verdict@1",
+              "target": {
+                "component": "extension",
+                "version": "1.5.2",
+                "commit": "9328747c6574ceff2a7a5ac083cf48d890872aa4",
+                "vsixSha256": "113ba0f653ee56f785aa0ada619abc7f991e98ef9cfce22e221a13d8a8d9d1b0"
+              },
+              "verdict": "pass",
+              "reviewer": "reviewer@vi-tech.nl",
+              "station": "WINDOWS_VM",
+              "notes": "",
+              "evidence": [],
+              "renderedAt": "2026-11-15T07:32:58.555Z"
+            },
+            "signOff": {
+              "schema": "labview-benchmark-actor/acg-human-signoff-v1",
+              "subject": {
+                "verdictDigest": "726f1e4a03e1b5ef3a9b33f709fb595ca044e3774a4a3cc8dfa8b871a962e689",
+                "consensusVerdict": "pass",
+                "target": {
+                  "component": "extension",
+                  "version": "1.5.2",
+                  "commit": "9328747c6574ceff2a7a5ac083cf48d890872aa4",
+                  "vsixSha256": "113ba0f653ee56f785aa0ada619abc7f991e98ef9cfce22e221a13d8a8d9d1b0"
+                }
+              },
+              "reviewer": "reviewer@vi-tech.nl",
+              "decision": "approve",
+              "station": "WINDOWS_VM",
+              "algorithm": "ed25519",
+              "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASTuGk3m37HTulYIpRU8KZIB/w0ZZw8wdIfRel+9hUf4=\n-----END PUBLIC KEY-----\n",
+              "signedAt": "2026-11-15T07:32:58.556Z",
+              "signature": "TuaF7U8vKGtgR70GAUwpiXbphWwobYgrYoYjR8d0dzSRz5tQBvQqtEf+nW8vwgiMZ7KZJ9N5QhJ8BJrEbsQkAg=="
+            }
+          }
         }
       }
     }
