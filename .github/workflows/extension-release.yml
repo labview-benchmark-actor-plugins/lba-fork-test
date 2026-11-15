@@ -98,6 +98,8 @@ jobs:
   release:
     needs: [build, agreement]
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.version }}
     permissions:
       contents: write # create the release + attach assets
       id-token: write # keyless-sign the artifacts with cosign (Fulcio OIDC -> public rekor)
@@ -237,31 +239,51 @@ jobs:
             --notes-file "${{ steps.notes.outputs.path }}" \
             staging/*
 
+  publish:
+    # Marketplace publish with Trusted Publishing (GitHub OIDC): the svelderrainruiz publisher's policy trusts this
+    # repository, this workflow file, and the `marketplace` environment, so no publishing secret is stored and the
+    # Marketplace credential lives 15 minutes. The environment's required reviewer approves each deployment AFTER
+    # the human reviewer-VM last gate and the bidirectional WIN <-> LINUX agreement gate (the `release` job's
+    # needs). It publishes the canonical GitHub Release asset only when its sha256 equals the artifact staged,
+    # tested, and agreement-gated by this run. Packaging stays on the repository's pinned vsce; only the upload
+    # uses the pinned @vscode/vsce that supports --oidc.
+    needs: [release]
+    if: ${{ github.repository == 'svelderrainruiz/labview-benchmark-actor' && github.event_name == 'workflow_dispatch' && inputs.publish_marketplace }}
+    runs-on: ubuntu-latest
+    environment: marketplace
+    permissions:
+      contents: read
+      id-token: write # exchanged once for the short-lived Marketplace credential
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Download the staged, agreement-gated artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ext-vsix-signed-${{ needs.release.outputs.version }}
+          path: staging
+
       - name: Publish to VS Code Marketplace
-        # Fork-safe: only the canonical repo publishes. Fail-OPEN on a missing PAT so the GitHub Release
-        # (which reviewer-workstation provisioning pulls) still succeeds without Marketplace credentials.
-        # The operator supplies the VSCE_PAT secret to actually publish -- AFTER the human reviewer-VM
-        # last gate and the bidirectional WIN <-> LINUX agreement gate above. Publishes the EXACT staged
-        # artifact already built, tested, and agreement-gated.
-        if: ${{ (github.repository == 'LabVIEW-Community-CI-CD/labview-benchmark-actor' || github.repository == 'svelderrainruiz/labview-benchmark-actor') && github.event_name == 'workflow_dispatch' && inputs.publish_marketplace }}
         env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.release.outputs.version }}
         run: |
           set -eu
-          if [ -z "${VSCE_PAT:-}" ]; then
-            echo "VSCE_PAT secret not set -- skipping Marketplace publish (the GitHub Release was still created). Set VSCE_PAT to enable Marketplace publishing."
-            exit 0
-          fi
           release_dir="$(mktemp -d)"
-          gh release download "ext-v${{ steps.ver.outputs.version }}" \
+          gh release download "ext-v${VERSION}" \
             --repo "$GITHUB_REPOSITORY" \
-            --pattern "labview-benchmark-actor-${{ steps.ver.outputs.version }}.vsix" \
+            --pattern "labview-benchmark-actor-${VERSION}.vsix" \
             --dir "$release_dir"
-          release_sha="$(sha256sum "$release_dir/labview-benchmark-actor-${{ steps.ver.outputs.version }}.vsix" | cut -d' ' -f1)"
-          staged_sha="$(sha256sum "staging/labview-benchmark-actor-${{ steps.ver.outputs.version }}.vsix" | cut -d' ' -f1)"
+          release_sha="$(sha256sum "$release_dir/labview-benchmark-actor-${VERSION}.vsix" | cut -d' ' -f1)"
+          staged_sha="$(sha256sum "staging/labview-benchmark-actor-${VERSION}.vsix" | cut -d' ' -f1)"
           if [ "$release_sha" != "$staged_sha" ]; then
             echo "::error::Canonical GitHub Release VSIX differs from the staged Marketplace candidate." >&2
             exit 1
           fi
-          npx vsce publish --packagePath "$release_dir/labview-benchmark-actor-${{ steps.ver.outputs.version }}.vsix" -p "$VSCE_PAT"
+          npx --yes @vscode/vsce@4.1.1 publish --packagePath "$release_dir/labview-benchmark-actor-${VERSION}.vsix" --oidc

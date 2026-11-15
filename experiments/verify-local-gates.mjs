@@ -1620,9 +1620,13 @@ check('release-component-versioning', () => {
   assert(
     workflow.includes('inputs.publish_marketplace')
       && workflow.includes('gh release download')
-      && workflow.includes('vsce publish --packagePath "$release_dir/'),
+      && /npx --yes @vscode\/vsce@\d+\.\d+\.\d+ publish --packagePath "\$release_dir\/[^"\n]+" --oidc/.test(workflow),
     'GitHub-first stable Marketplace policy drifted',
   );
+  // Trusted Publishing: the publish job runs in the `marketplace` environment (the operator approves each deployment)
+  // with an OIDC id-token, and no stored Marketplace PAT is referenced anywhere in the workflow.
+  assert(/\n  publish:\n(?:    .*\n|\s*\n)*?    environment: marketplace\n/.test(workflow), 'Marketplace publish must run in the marketplace environment');
+  assert(!/VSCE_PAT/.test(workflow), 'Marketplace publish must use Trusted Publishing, not a stored PAT');
   assert(releaseCli.includes("'--target', 'main'"), 'GitHub release target-main control drifted');
   assert(releaseComponentsSource.includes("fromHead('experiments/governance-overrides.json')"), 'first-introduction fallback omits experiment-governance version');
   assert(releaseCli.includes("purpose: 'quorum'") && releaseCli.includes('no quorum key enrolled'), 'signing readiness is not version/quorum scoped');

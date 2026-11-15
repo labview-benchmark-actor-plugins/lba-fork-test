@@ -185,10 +185,12 @@ key material). Then:
    `gh release create ext-vX.Y.Z <assets> --notes-file <changelog section> --target main`
    (an authorized bypass token is needed to push the protected `ext-v*` tag).
 4. Dispatch the workflow again with
-   `-f version=X.Y.Z -f publish_marketplace=true --ref ext-vX.Y.Z`. The job is pinned to the
-   release tag, downloads the canonical
-   release VSIX, requires its SHA-256 to equal the staged VSIX, then publishes it with
-   stable `vsce publish` directly from the downloaded release asset.
+   `-f version=X.Y.Z -f publish_marketplace=true --ref ext-vX.Y.Z`. Its `publish` job waits for the
+   operator to approve the `marketplace` environment deployment, downloads the canonical release VSIX,
+   requires its SHA-256 to equal the staged VSIX, then publishes it with `vsce publish --oidc`
+   (Trusted Publishing; no stored PAT). A tag cut before Trusted Publishing still carries the PAT
+   workflow, so publish such a release with `--ref main`; the SHA-256 check still binds the upload to
+   the canonical release asset.
 
 ## 8. Close out
 
@@ -214,5 +216,5 @@ key material). Then:
 | Marketplace verification | `~/lba-vm-share/marketplace-verification-X.Y.Z.json` (host) |
 | Composite receipt (committed) | `reviewer-workstation/composite-release-decision-receipt.json` |
 | Release agreement (committed) | `tools/collab-cli/release-agreement.json` |
-| Marketplace publish credential | `VSCE_PAT` secret (CI) |
+| Marketplace publish credential | none stored: Trusted Publishing policy on the `svelderrainruiz` publisher for `extension-release.yml` + environment `marketplace` |
 | `ext-v*` tag push | an authorized bypass token (protected tag) |
