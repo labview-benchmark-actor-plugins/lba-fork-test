@@ -28,8 +28,12 @@ copy of `docs/` would drift from the sources the gates govern.
 - A requirement note combines the governed register row, the acceptance detail, and traceability from the RTM, the
   architecture description, and the ADR index "Traces to" column, so every requirement links its tests and decisions.
 - Links are alias-free `[[Page]]` wikilinks, because Obsidian reads `[[Page|alias]]` while the GitHub wiki reads
-  `[[alias|Page]]`. Links to other repository files become GitHub URLs on `develop`, and issue references become
-  issue URLs. Page names use only letters, digits, `-`, and `_`, and are unique regardless of case.
+  `[[alias|Page]]`. Links to other repository files become GitHub URLs on `develop`, and explicit `owner/repo#N`
+  references become issue URLs. A bare `#N` stays text: `docs/` also uses it for other repositories' items,
+  acceptance criteria, and gate numbers. Page names use only letters, digits, `-`, and `_`, and are unique regardless
+  of case.
+- `--out` prunes files the vault does not contain, so it writes only into an empty directory, a wiki clone, or a vault
+  the generator wrote before, and never into the repository or one of its parents.
 - The `wiki-vault` gate validates the generated vault and proves each detector with a negative control. The
   `wiki-publish` workflow regenerates the wiki on every `develop` change to `docs/`, pushes it to the `.wiki.git`
   repository with the workflow token, then re-clones it and runs `--check` to prove the published wiki has not

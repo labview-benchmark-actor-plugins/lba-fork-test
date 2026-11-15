@@ -14,9 +14,10 @@
 // Links are alias-free [[Note]] wikilinks: Obsidian reads [[Note|alias]] while the GitHub wiki reads [[alias|Note]],
 // so only the plain form means the same thing in both.
 
-import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, rmSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, readdirSync, existsSync, mkdirSync, mkdtempSync, rmSync, statSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve, posix } from 'node:path';
+import { dirname, isAbsolute, join, relative, resolve, posix } from 'node:path';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, '..');
@@ -265,9 +266,9 @@ export function buildVault(model = loadModel()) {
     s = s.replace(WIKILINK_RE, (m) => keep(m));
     s = s.replace(LINK_RE, (whole, bang, text, target, title = '') => keep(rewriteLink(whole, bang, text, target, title, srcRel, self, noteDir, saved)));
     s = s.replace(/<?https?:\/\/[^\s)>\]]+>?/g, (m) => keep(m));
-    // Issue references are relative to a repository; in a wiki they need an explicit URL.
+    // An explicit owner/repo#N reference becomes its issue URL. A bare #N stays text: docs/ also uses it for other
+    // repositories' items, acceptance criteria, and gate numbers, so it does not reliably name an issue here.
     s = s.replace(/(?<![\w&#/.-])([A-Za-z0-9-]+\/[A-Za-z0-9._-]+)#(\d+)\b/g, (m, repo, n) => keep(`[${m}](https://github.com/${repo}/issues/${n})`));
-    s = s.replace(/(?<![\w&#/\u0001])#(\d+)\b(?![\w-])/g, (m, n) => keep(`[#${n}](${REPO_URL}/issues/${n})`));
     // A bracketed plain identifier ("[LBA-REQ-044]") would become an ambiguous triple bracket; use parentheses.
     s = s.replace(/\[(LBA-REQ-\d{3}|ADR-\d{4}|T-\d{3})\]/g, (m, id) => (notePath.has(id) && id !== self ? `(${id})` : m));
     s = s.replace(ID_RE, (id, _g, offset, whole) => {
@@ -549,13 +550,43 @@ function listTree(dir) {
   const visit = (rel) => {
     for (const entry of readdirSync(join(dir, rel), { withFileTypes: true })) {
       const child = rel ? `${rel}/${entry.name}` : entry.name;
-      if (child === '.git') continue;
+      if (entry.name === '.git') continue;
       if (entry.isDirectory()) visit(child);
       else out.push(child);
     }
   };
   visit('');
   return out.sort();
+}
+
+// --out prunes every file the vault does not contain, so it only writes into an empty directory, a wiki clone, or a
+// vault this generator wrote before, and never into the repository or one of its parents.
+export function assertSafeOutDir(dir) {
+  const target = resolve(dir);
+  const up = relative(target, repoRoot);
+  if (!up.startsWith('..') && !isAbsolute(up)) throw new Error(`refusing to write the wiki into ${target}: it contains the repository`);
+  if (!existsSync(target)) return;
+  if (readdirSync(target).filter((name) => name !== '.git').length === 0) return;
+  const gitConfig = join(target, '.git', 'config');
+  if (existsSync(gitConfig) && /^\s*url\s*=\s*\S+\.wiki(\.git)?\/?\s*$/m.test(readFileSync(gitConfig, 'utf8'))) return;
+  const home = join(target, 'Home.md');
+  if (existsSync(join(target, '.obsidian', 'app.json')) && existsSync(home) && readFileSync(home, 'utf8').includes('scripts/build-wiki.mjs')) return;
+  throw new Error(`refusing to prune ${target}: it is not empty, not a wiki clone, and not a vault this generator wrote`);
+}
+
+function outGuardControls() {
+  const refused = (dir) => { try { assertSafeOutDir(dir); return false; } catch { return true; } };
+  const scratch = mkdtempSync(join(tmpdir(), 'lba-wiki-guard-'));
+  try {
+    writeFileSync(join(scratch, 'Personal-Note.md'), '# mine\n');
+    return [
+      ['repository root', refused(repoRoot)],
+      ['parent of the repository', refused(dirname(repoRoot))],
+      ['unrelated non-empty directory', refused(scratch)],
+    ].map(([name, failsClosed]) => ({ name: `--out into ${name}`, failsClosed }));
+  } finally {
+    rmSync(scratch, { recursive: true, force: true });
+  }
 }
 
 function main(argv) {
@@ -566,6 +597,7 @@ function main(argv) {
   if (outAt >= 0) {
     const dir = resolve(argv[outAt + 1] || '');
     if (!argv[outAt + 1]) throw new Error('--out needs a directory');
+    assertSafeOutDir(dir);
     mkdirSync(dir, { recursive: true });
     for (const rel of listTree(dir)) if (!vault.files.has(rel)) rmSync(join(dir, rel));
     for (const [rel, content] of vault.files) {
@@ -601,7 +633,7 @@ function main(argv) {
   const deterministic = again.files.size === vault.files.size
     && [...vault.files].every(([rel, content]) => again.files.has(rel) && sameBytes(again.files.get(rel), content));
   if (!deterministic) result.errors.push('two builds from the same sources differ');
-  const controls = negativeControls(vault);
+  const controls = [...negativeControls(vault), ...outGuardControls()];
   for (const c of controls) if (!c.failsClosed) result.errors.push(`negative control "${c.name}" was not detected`);
   if (result.errors.length) {
     console.error(`wiki-vault: FAIL, ${result.errors.length} problem(s)`);
