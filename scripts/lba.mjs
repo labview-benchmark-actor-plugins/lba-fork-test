@@ -42,7 +42,8 @@
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync, rmSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
-import { createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto';
+import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto';
+import { gunzipSync, gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { capacityWeightedPartition } from '../experiments/parallel/parallelWorkload.mjs';
@@ -54,9 +55,10 @@ import { stagedOk } from '../reviewer-workstation/release-with-review-drive.mjs'
 import { buildReleaseStage } from '../reviewer-workstation/record-release-stage.mjs';
 import { enrolledReviewerPublicKeys } from '../experiments/handoff-beacon/reviewerVerdict.mjs';
 import { validateLbabusProvisioningPin } from './verify-ubuntu-golden-box.mjs';
+import { reviewedVsixSha256 } from './verify-published-vsix.mjs';
 import { decideAutonomousN3 } from '../experiments/mesh-fulfillment/autonomousN3Controller.mjs';
 
-export const ITERATION = 32; // bump when you refine this tool (see the banner above)
+export const ITERATION = 33; // bump when you refine this tool (see the banner above)
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, '..');
@@ -334,22 +336,37 @@ export function marketplaceVerificationPath(share, version) {
   return join(share, `marketplace-verification-${String(version)}.json`);
 }
 
-export function buildMarketplaceVerificationReceipt({ extension, version, result, verifiedAt = new Date().toISOString() } = {}) {
+export function buildMarketplaceVerificationReceipt({ extension, version, result, artifact, verifiedAt = new Date().toISOString() } = {}) {
   return {
     schema: MARKETPLACE_VERIFICATION_SCHEMA,
     extension: String(extension),
     version: String(version),
     verifiedAt,
     observed: { latest: result?.latest ?? null, versions: Array.isArray(result?.versions) ? result.versions.map(String) : [] },
-    verdict: { published: result?.ok === true && result?.live === true },
+    artifact: {
+      reviewedSha256: artifact?.reviewedSha256 ?? null,
+      marketplaceSha256: artifact?.marketplaceSha256 ?? null,
+      githubReleaseSha256: artifact?.githubReleaseSha256 ?? null,
+    },
+    verdict: {
+      published: result?.ok === true && result?.live === true,
+      reviewedMatchesShipped: artifact?.ok === true,
+    },
   };
 }
 
+// A version counts as published only when the listing showed it live AND the VSIX the Marketplace serves is the
+// reviewed artifact (#71); a receipt without that identity proof does not count.
 export function isMarketplaceVerificationReceipt(receipt, { extension, version } = {}) {
+  const sha = (value) => /^[0-9a-f]{64}$/.test(String(value ?? ''));
   return receipt?.schema === MARKETPLACE_VERIFICATION_SCHEMA
     && receipt.extension === String(extension)
     && receipt.version === String(version)
     && receipt.verdict?.published === true
+    && receipt.verdict?.reviewedMatchesShipped === true
+    && sha(receipt.artifact?.reviewedSha256)
+    && receipt.artifact.marketplaceSha256 === receipt.artifact.reviewedSha256
+    && receipt.artifact.githubReleaseSha256 === receipt.artifact.reviewedSha256
     && Array.isArray(receipt.observed?.versions)
     && receipt.observed.versions.map(String).includes(String(version));
 }
@@ -440,6 +457,43 @@ export function assertListingLinks(queryResult, { version, repositoryUrl, bugsUr
     if (!ok) reasons.push(`listing Links.${name} ${value} does not point to ${name === 'Support' ? bugsUrl : repositoryUrl}`);
   }
   return { ok: reasons.length === 0, links, reason: reasons.join('; ') };
+}
+
+// ---- release-verify-published (#71): the VSIX the Marketplace serves must be the reviewed artifact -------------
+// The listing can be live with the right links and still serve a different file. The reviewed hash is the signed
+// visual-verdict target in release-agreement.json (reviewedVsixSha256, the same rule verify-published-vsix.mjs
+// applies before publishing); the Marketplace package and the immutable GitHub Release asset must both equal it.
+export function marketplaceVsixUrl({ publisher, name, version } = {}) {
+  return `https://marketplace.visualstudio.com/_apis/public/gallery/publishers/${encodeURIComponent(publisher)}/vsextensions/${encodeURIComponent(name)}/${encodeURIComponent(version)}/vspackage`;
+}
+
+export function githubReleaseVsixUrl({ repositoryUrl, name, version } = {}) {
+  const repo = String(repositoryUrl ?? '').trim().replace(/^git\+/, '').replace(/\.git$/i, '').replace(/\/+$/, '');
+  if (!/^https:\/\/github\.com\/[^/]+\/[^/]+$/.test(repo)) throw new Error(`not a GitHub repository URL: ${repositoryUrl}`);
+  return `${repo}/releases/download/ext-v${version}/${name}-${version}.vsix`;
+}
+
+// The gallery may serve the package gzip-compressed without saying so; a VSIX is a ZIP archive ("PK").
+export function vsixBytesFromDownload(bytes) {
+  let buffer = Buffer.from(bytes);
+  if (buffer[0] === 0x1f && buffer[1] === 0x8b) buffer = gunzipSync(buffer);
+  if (!(buffer[0] === 0x50 && buffer[1] === 0x4b)) throw new Error('the download is not a VSIX (ZIP) archive');
+  return buffer;
+}
+
+export function assertShippedArtifact({ agreement, component = 'extension', version, marketplaceSha256, githubReleaseSha256 } = {}) {
+  const reasons = [];
+  let reviewed = null;
+  try { reviewed = reviewedVsixSha256(agreement, component, version); } catch (e) { reasons.push(e.message); }
+  if (reviewed && marketplaceSha256 !== reviewed) reasons.push(`the Marketplace VSIX ${marketplaceSha256} is not the reviewed artifact ${reviewed}`);
+  if (reviewed && githubReleaseSha256 !== reviewed) reasons.push(`the GitHub Release VSIX ${githubReleaseSha256} is not the reviewed artifact ${reviewed}`);
+  return { ok: reasons.length === 0, reviewedSha256: reviewed, marketplaceSha256, githubReleaseSha256, reason: reasons.join('; ') };
+}
+
+export async function downloadVsixSha256(url, { fetchImpl = globalThis.fetch } = {}) {
+  const res = await fetchImpl(url, { redirect: 'follow' });
+  if (!res.ok) throw new Error(`download failed: HTTP ${res.status} for ${url}`);
+  return createHash('sha256').update(vsixBytesFromDownload(new Uint8Array(await res.arrayBuffer()))).digest('hex');
 }
 
 // Live leg: POST the VS Code Marketplace gallery extensionquery for one extension. `fetchImpl` is injectable so the
@@ -740,7 +794,7 @@ export const COMMANDS = {
     },
   },
   'release-verify-published': {
-    desc: 'confirm the VS Code Marketplace listing shows X.Y.Z live after publish and record resumable local evidence (#412)',
+    desc: 'confirm X.Y.Z is live on the VS Code Marketplace with canonical links and ships the reviewed VSIX, then record resumable local evidence (#412, #56, #71)',
     run: async (args) => {
       const version = args.find((a) => !a.startsWith('--'));
       if (!/^\d+\.\d+\.\d+/.test(version || '')) { console.error('usage: lba release-verify-published X.Y.Z [--extension <publisher.name>]'); process.exit(2); }
@@ -764,6 +818,18 @@ export const COMMANDS = {
           return;
         }
         console.log(`\u2713 listing Issues link: ${linkCheck.links.Support}`);
+        const artifact = assertShippedArtifact({
+          agreement: JSON.parse(read('tools/collab-cli/release-agreement.json')),
+          version,
+          marketplaceSha256: await downloadVsixSha256(marketplaceVsixUrl({ publisher, name, version })),
+          githubReleaseSha256: await downloadVsixSha256(githubReleaseVsixUrl({ repositoryUrl, name: pkg.name, version })),
+        });
+        if (!artifact.ok) {
+          console.error(`\u2717 ${extId} ${version} is live, but it does not ship the reviewed artifact: ${artifact.reason}`);
+          process.exitCode = 1;
+          return;
+        }
+        console.log(`\u2713 Marketplace and GitHub Release VSIX are the reviewed artifact: ${artifact.reviewedSha256}`);
         const share = process.env.LBA_VM_SHARE || (process.env.HOME ? join(process.env.HOME, 'lba-vm-share') : '');
         if (!share) {
           console.error('\u2717 Marketplace verification succeeded but no local share is configured; set HOME or LBA_VM_SHARE to persist resumable evidence');
@@ -771,7 +837,7 @@ export const COMMANDS = {
           return;
         }
         const receiptPath = marketplaceVerificationPath(share, version);
-        const receipt = buildMarketplaceVerificationReceipt({ extension: extId, version, result: r });
+        const receipt = buildMarketplaceVerificationReceipt({ extension: extId, version, result: r, artifact });
         mkdirSync(share, { recursive: true });
         writeFileSync(receiptPath, `${JSON.stringify(receipt, null, 2)}\n`);
         console.log(`\u2713 ${extId} ${version} is LIVE on the Marketplace (latest ${r.latest}; recent: ${r.versions.slice(0, 5).join(', ')})`);
@@ -1103,10 +1169,35 @@ const SELFTEST = [
   }],
   ['release-verify-published records only a matching successful Marketplace observation as resumable evidence', () => {
     const result = { ok: true, live: true, latest: '1.2.0', versions: ['1.2.0', '1.1.1'] };
-    const receipt = buildMarketplaceVerificationReceipt({ extension: 'pub.ext', version: '1.2.0', result, verifiedAt: '2026-08-06T00:00:00.000Z' });
+    const sha = 'a'.repeat(64);
+    const artifact = { ok: true, reviewedSha256: sha, marketplaceSha256: sha, githubReleaseSha256: sha };
+    const receipt = buildMarketplaceVerificationReceipt({ extension: 'pub.ext', version: '1.2.0', result, artifact, verifiedAt: '2026-08-06T00:00:00.000Z' });
     const wrongVersion = { ...receipt, version: '1.2.1' };
+    const noProof = buildMarketplaceVerificationReceipt({ extension: 'pub.ext', version: '1.2.0', result, verifiedAt: '2026-08-06T00:00:00.000Z' });
+    const otherFile = { ...receipt, artifact: { ...receipt.artifact, marketplaceSha256: 'b'.repeat(64) } };
     return isMarketplaceVerificationReceipt(receipt, { extension: 'pub.ext', version: '1.2.0' })
-      && !isMarketplaceVerificationReceipt(wrongVersion, { extension: 'pub.ext', version: '1.2.0' });
+      && !isMarketplaceVerificationReceipt(wrongVersion, { extension: 'pub.ext', version: '1.2.0' })
+      && !isMarketplaceVerificationReceipt(noProof, { extension: 'pub.ext', version: '1.2.0' })
+      && !isMarketplaceVerificationReceipt(otherFile, { extension: 'pub.ext', version: '1.2.0' });
+  }],
+  ['release-verify-published (#71) requires the Marketplace and GitHub Release VSIX to be the reviewed artifact', () => {
+    const reviewed = 'c'.repeat(64);
+    const agreement = { components: { extension: { releases: { '1.2.0': { visualReview: { verdict: { target: { vsixSha256: reviewed } } } } } } } };
+    const check = (marketplaceSha256, githubReleaseSha256, version = '1.2.0') => assertShippedArtifact({ agreement, version, marketplaceSha256, githubReleaseSha256 });
+    return check(reviewed, reviewed).ok === true
+      && check('d'.repeat(64), reviewed).ok === false
+      && check(reviewed, 'd'.repeat(64)).ok === false
+      && check(reviewed, reviewed, '1.2.1').ok === false;
+  }],
+  ['release-verify-published (#71) reads a plain or gzip-wrapped VSIX download and rejects anything else', () => {
+    const zip = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0x01, 0x02]);
+    const plain = vsixBytesFromDownload(zip);
+    const wrapped = vsixBytesFromDownload(gzipSync(zip));
+    let rejected = false;
+    try { vsixBytesFromDownload(Buffer.from('<html>not found</html>')); } catch { rejected = true; }
+    return plain.equals(zip) && wrapped.equals(zip) && rejected
+      && marketplaceVsixUrl({ publisher: 'pub', name: 'ext', version: '1.2.0' }).endsWith('/publishers/pub/vsextensions/ext/1.2.0/vspackage')
+      && githubReleaseVsixUrl({ repositoryUrl: 'https://github.com/owner/ext.git', name: 'ext', version: '1.2.0' }) === 'https://github.com/owner/ext/releases/download/ext-v1.2.0/ext-1.2.0.vsix';
   }],
   ['release-verify-published (#412) fails closed on absent version / publisher mismatch / no extension', () => {
     const q = { results: [{ extensions: [{ publisher: { publisherName: 'pub' }, extensionName: 'ext', versions: [{ version: '1.1.1' }] }] }] };

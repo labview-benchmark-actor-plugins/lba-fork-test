@@ -200,8 +200,10 @@ key material). Then:
    release tip is an ancestor of both, so the planes stay in sync.
 3. Re-check the Marketplace listing (the gallery API lags a few minutes) with
    `npm run lba -- release-verify-published X.Y.Z`. It also requires every listing link,
-   Issues (`Links.Support`) included, to name the canonical repository (#56). A successful query records
-   `~/lba-vm-share/marketplace-verification-X.Y.Z.json`, allowing the resumable driver to
+   Issues (`Links.Support`) included, to name the canonical repository (#56), and it downloads the VSIX the
+   Marketplace serves and the `ext-vX.Y.Z` GitHub Release asset and requires both to equal the reviewed artifact
+   (the signed visual-verdict target in `release-agreement.json`, #71). A successful query records
+   `~/lba-vm-share/marketplace-verification-X.Y.Z.json` with the three hashes, allowing the resumable driver to
    recognize phase 13 only after the required release-tip back-merge to `develop` is also
    proven. Record the closeout in the regenerated `docs/testing/test-report.md` counts.
 
