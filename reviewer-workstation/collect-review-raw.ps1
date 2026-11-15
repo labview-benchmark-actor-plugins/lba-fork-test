@@ -7,6 +7,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$passwordFile = $null # set before anything can throw: the trap below covers this whole scope
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $releaseComponents = Get-Content (Join-Path $repoRoot 'release-components.json') -Raw | ConvertFrom-Json
 $expectedLbabusVersion = [string]$releaseComponents.lbabus
@@ -22,7 +23,7 @@ if ($IsLinux -or $IsMacOS) { & chmod 600 $passwordFile } else {
   Set-Acl -LiteralPath $passwordFile -AclObject $acl
 }
 [IO.File]::WriteAllText($passwordFile, $GuestPassword, [Text.UTF8Encoding]::new($false))
-trap { Remove-Item -LiteralPath $passwordFile -Force -ErrorAction SilentlyContinue; break }
+trap { if ($passwordFile) { Remove-Item -LiteralPath $passwordFile -Force -ErrorAction SilentlyContinue }; break }
 
 function Copy-GuestFile([string]$Source, [string]$Destination, [switch]$AllowMissing) {
   Remove-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
