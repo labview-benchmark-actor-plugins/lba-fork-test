@@ -18,6 +18,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { closeSync, existsSync, mkdirSync, mkdtempSync, openSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:net';
 import { homedir, tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -98,6 +99,9 @@ export function buildInstallScript({ extensionId, version, guestVsix = GUEST_VSI
     '$code = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1',
     "if (-not $code) { Write-Output 'INSTALL_ERROR=code.cmd not found'; exit 1 }",
     `& $code --install-extension ${psQuote(guestVsix)} --force 2>&1 | ForEach-Object { "$_" }`,
+    '$installExit = $LASTEXITCODE',
+    // A failed install can leave an older build of the same version listed, so the exit status must also be clean.
+    'if ($installExit -ne 0) { Write-Output "INSTALL_ERROR=code --install-extension exited $installExit"; exit 1 }',
     '$listed = @(& $code --list-extensions --show-versions 2>$null)',
     `if ($listed -contains ${psQuote(want)}) { Write-Output ${psQuote(`INSTALLED=${want}`)}; exit 0 }`,
     `Write-Output ${psQuote(`INSTALL_ERROR=${want} is not listed after install`)}`,
@@ -204,8 +208,9 @@ function defaultIo() {
         rmSync(dir, { recursive: true, force: true });
       }
     },
+    // The listener runs in its own process group so stop() also ends the lbabus child that holds the TCP port.
     startListener: (args, env) => {
-      const child = spawn(process.execPath, args, { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+      const child = spawn(process.execPath, args, { env: { ...process.env, ...env }, stdio: ['ignore', 'pipe', 'pipe'], detached: true });
       let stdout = '';
       let stderr = '';
       let markReady;
@@ -213,8 +218,26 @@ function defaultIo() {
       child.stdout.on('data', (d) => { stdout += d; });
       child.stderr.on('data', (d) => { stderr += d; if (/listening/.test(stderr)) markReady(true); });
       const done = new Promise((resolveDone) => child.on('close', (code) => { markReady(false); resolveDone({ code, stdout, stderr }); }));
-      return { ready, done, stop: () => child.kill('SIGTERM') };
+      const stop = () => { try { process.kill(-child.pid, 'SIGTERM'); } catch { child.kill('SIGTERM'); } };
+      return { ready, done, stop };
     },
+    // True when a socket is in LISTEN state on the port. On Linux this reads the kernel tables without touching the
+    // port, so the readiness poll cannot race the listener's own bind; elsewhere it falls back to a bind probe.
+    portInUse: (port) => {
+      const hex = `:${port.toString(16).toUpperCase().padStart(4, '0')}`;
+      const tables = ['/proc/net/tcp', '/proc/net/tcp6'].filter((table) => existsSync(table));
+      if (tables.length) {
+        return Promise.resolve(tables.some((table) => readFileSync(table, 'utf8').split('\n').slice(1)
+          .some((line) => { const cols = line.trim().split(/\s+/); return cols[1]?.endsWith(hex) && cols[3] === '0A'; })));
+      }
+      return new Promise((resolvePort) => {
+        const server = createServer();
+        server.once('error', (error) => resolvePort(error.code === 'EADDRINUSE'));
+        server.once('listening', () => server.close(() => resolvePort(false)));
+        server.listen({ port, host: '0.0.0.0', exclusive: true });
+      });
+    },
+    sleep: (ms) => new Promise((resolveSleep) => setTimeout(resolveSleep, ms)),
     readFile: (path, encoding) => readFileSync(path, encoding),
     writeFile: (path, data, mode) => { mkdirSync(dirname(path), { recursive: true }); writeFileSync(path, data, mode ? { mode } : undefined); },
     exists: (path) => existsSync(path),
@@ -234,6 +257,7 @@ export async function stageWin(options, io = defaultIo()) {
   const { version, vm, commit, vsix, attestation: attestationPath, share, visualKey, reviewerId = 'reviewer@vi-tech.nl',
     user = 'vagrant', timeout = 300, setTarget = true, force = false, dryRun = false, extensionId } = options;
   need(SEMVER.test(String(version)), 'usage: release-stage-win <X.Y.Z> --vm <name> --commit <sha> --vsix <path> --attestation <file>');
+  need(Number.isInteger(timeout) && timeout > 0, `--timeout must be a positive whole number of seconds, got ${timeout}`);
   need(vm, '--vm <name> is required (or set LBA_REVIEWER_VM)');
   need(COMMIT.test(String(commit)), `--commit must be a full 40-character sha, got ${commit}`);
   need(vsix && io.exists(vsix), `--vsix ${vsix} does not exist`);
@@ -304,14 +328,28 @@ export async function stageWin(options, io = defaultIo()) {
     io.log('[stage-win] configured the visual reviewer key');
 
     io.mkdir(share); // the listener writes its readback straight into the share
+    // A stale listener on the port would ACK the sender in place of ours, so the port must start free and then be
+    // bound by the new listener before anything is sent.
+    need(!(await io.portInUse(BUS_TCP)), `TCP ${BUS_TCP} is already in use on this host; stop the stale listener first (ss -ltnp 'sport = :${BUS_TCP}')`);
     const listener = io.startListener([join(here, 'await-agent-reply.mjs'), '--task', taskId, '--tcp', String(BUS_TCP), '--timeout', String(timeout), '--type', 'DONE', '--out', paths.readback], {});
-    need(await listener.ready, 'the host listener did not start');
-    const sent = run(GUEST_NODE, [`${GUEST_DIR}\\lba-send-stage-${version}.mjs`]);
-    if (sent.status !== 0 || !sent.stdout.includes(`STAGED_SHA256=${vsixSha256}`)) {
-      listener.stop();
-      throw guestFail('the in-VM sender', sent);
+    let heard = null;
+    try {
+      need(await listener.ready, 'the host listener did not start');
+      let bound = false;
+      for (let i = 0; i < 60 && !bound; i += 1) {
+        bound = await io.portInUse(BUS_TCP);
+        if (!bound) await io.sleep(250);
+      }
+      need(bound, `the host listener did not bind TCP ${BUS_TCP}`);
+      const sent = run(GUEST_NODE, [`${GUEST_DIR}\\lba-send-stage-${version}.mjs`]);
+      if (sent.status !== 0 || !sent.stdout.includes(`STAGED_SHA256=${vsixSha256}`)) throw guestFail('the in-VM sender', sent);
+      heard = await listener.done;
+    } finally {
+      if (!heard) {
+        listener.stop();
+        await listener.done;
+      }
     }
-    const heard = await listener.done;
     need(heard.code === 0 && io.exists(paths.readback),
       `the host listener did not correlate ${taskId} (exit ${heard.code}): ${String(heard.stderr ?? '').trim().split(/\r?\n/).slice(-2).join(' | ')}`);
 
@@ -364,7 +402,7 @@ export async function main(argv = process.argv.slice(2)) {
     visualKey: a['visual-key'] || join(home, '.config', 'lba', 'reviewer', String(version), 'reviewer-visual.pem'),
     passwordFile: a['password-file'] || join(home, '.config', 'lba', 'vm-pass'),
     reviewerId: a.reviewer,
-    timeout: a.timeout ? Number(a.timeout) : 300,
+    timeout: a.timeout === undefined ? 300 : (/^\d+$/.test(a.timeout) ? Number(a.timeout) : NaN),
     setTarget: !a['no-set-target'],
     force: !!a.force,
     dryRun: !!a['dry-run'],

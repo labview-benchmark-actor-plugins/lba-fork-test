@@ -30,7 +30,7 @@ const extensionId = 'pub.ext';
 const share = '/share';
 const scratchDir = join('/tmp', 'scratch'); // path.join form, so the expectations hold on Windows too
 
-function fakeIo({ vmState = 'running', guestSha = vsixSha256, installed = true, listenerCode = 0, files: extra = {} } = {}) {
+function fakeIo({ vmState = 'running', guestSha = vsixSha256, installed = true, listenerCode = 0, files: extra = {}, portBusy = false, binds = true, senderFails = false } = {}) {
   const files = new Map(Object.entries({
     '/c/candidate.vsix': vsixBytes,
     '/c/attestation.json': JSON.stringify(attestation),
@@ -39,9 +39,11 @@ function fakeIo({ vmState = 'running', guestSha = vsixSha256, installed = true, 
     ...extra,
   }));
   const calls = [];
+  const state = { listening: false, stopped: false };
   const io = {
     calls,
     files,
+    state,
     run: (cmd, args, options = {}) => {
       calls.push({ cmd, args, env: options.env });
       if (cmd === 'VBoxManage' && args[0] === 'showvminfo') return { status: 0, stdout: `name="vm"\nVMState="${vmState}"\n`, stderr: '' };
@@ -55,6 +57,7 @@ function fakeIo({ vmState = 'running', guestSha = vsixSha256, installed = true, 
         return installed ? { status: 0, stdout: `Installing...\r\nINSTALLED=${extensionId}@${version}\r\n`, stderr: '' } : { status: 1, stdout: 'INSTALL_ERROR=not listed', stderr: '' };
       }
       if (exe === GUEST_POWERSHELL) return { status: 0, stdout: 'REVIEWER_KEY=x\r\nSTALE_VERDICT_CLEARED=True\r\n', stderr: '' };
+      if (senderFails) return { status: 1, stdout: 'connect refused', stderr: '' };
       return { status: 0, stdout: `sent\nSTAGED_SHA256=${vsixSha256}\n`, stderr: '' };
     },
     startListener: (args) => {
@@ -65,7 +68,10 @@ function fakeIo({ vmState = 'running', guestSha = vsixSha256, installed = true, 
       if (listenerCode === 0) {
         files.set(out, JSON.stringify({ matched: true, expected: { type: 'DONE', task }, reply: { senderId: 'WIN', type: 'DONE', task, payload } }));
       }
-      return { ready: Promise.resolve(true), done: Promise.resolve({ code: listenerCode }), stop: () => {} };
+      state.listening = binds;
+      // A real listener releases the port when it exits; `done` settles lazily, when the driver awaits it.
+      const done = { then: (resolveDone, rejectDone) => { state.listening = false; return Promise.resolve({ code: senderFails ? 143 : listenerCode }).then(resolveDone, rejectDone); } };
+      return { ready: Promise.resolve(true), done, stop: () => { state.stopped = true; state.listening = false; } };
     },
     readFile: (path, encoding) => {
       if (!files.has(path)) throw new Error(`ENOENT ${path}`);
@@ -76,6 +82,8 @@ function fakeIo({ vmState = 'running', guestSha = vsixSha256, installed = true, 
     exists: (path) => files.has(path) || path === scratchDir,
     mkdir: (path) => { files.set(`${path}/`, ''); },
     tempDir: () => scratchDir,
+    portInUse: async () => portBusy || state.listening,
+    sleep: async () => {},
     remove: (path) => { for (const k of [...files.keys()]) if (k.startsWith(path)) files.delete(k); },
     log: () => {},
   };
@@ -99,6 +107,7 @@ const sender = buildStageSender({ version, commit, vsixSha256 });
 assert.ok(sender.includes(`'--task', "${task}"`) && sender.includes(`const expected = "${vsixSha256}";`) && sender.includes('"10.0.2.2"'));
 assert.ok(buildInstallScript({ extensionId, version }).includes("$ErrorActionPreference = 'Continue'"));
 assert.ok(buildInstallScript({ extensionId, version }).includes(`INSTALLED=${extensionId}@${version}`));
+assert.ok(buildInstallScript({ extensionId, version }).includes('if ($installExit -ne 0)'), 'a failed install fails even if an older build of the version is listed');
 assert.ok(buildConfigureVisual({ extensionId, version, reviewerId: 'r@x.y' }).includes(`reviewer\\${version}\\reviewer-visual.pem`));
 const runArgs = guestRunArgs({ vm: 'vm', user: 'u', passwordFile: '/p', exe: 'C:\\node.exe', args: ['C:\\s.mjs'] });
 assert.deepEqual(runArgs.slice(runArgs.indexOf('--') + 1), ['C:\\s.mjs']);
@@ -144,12 +153,18 @@ const failures = [
   ['missing visual key', options({ visualKey: '/c/none.pem' }), {}, /enroll the/],
   ['existing staged frame without --force', options(), { files: { [stagePaths({ share, version }).stagedFrame]: '{}' } }, /refusing to overwrite/],
   ['no password', options({ passwordFile: '/c/none' }), {}, /no VM password/],
+  ['stale listener already on TCP 7420', options(), { portBusy: true }, /already in use/],
+  ['listener never binds TCP 7420', options(), { binds: false }, /did not bind/],
+  ['sender fails', options(), { senderFails: true }, /in-VM sender failed/],
+  ['invalid timeout', options({ timeout: Number.NaN }), {}, /--timeout must be/],
 ];
 for (const [name, opts, io, pattern] of failures) {
   const fake = fakeIo(io);
   const before = fake.files.get(stagePaths({ share, version }).stagedFrame);
   await assert.rejects(() => stageWin(opts, fake), pattern, name);
   assert.equal(fake.files.get(stagePaths({ share, version }).stagedFrame), before, `${name}: no staged frame written`);
+  assert.equal(fake.state.listening, false, `${name}: no listener left holding the port`);
+  if (name === 'sender fails') assert.equal(fake.state.stopped, true, 'a failed sender stops the listener');
 }
 ok(`fail closed: ${failures.map(([n]) => n).join('; ')}`);
 
