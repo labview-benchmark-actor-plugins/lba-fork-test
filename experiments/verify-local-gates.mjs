@@ -297,6 +297,22 @@ check('information-for-users-26514', () => {
   return { standard: 'ISO/IEC/IEEE 26514:2022', selftest: 'verify-information-for-users 2/2 (committed conformant + fail-closed)' };
 });
 
+// 6e2. Repository wiki (LBA-REQ-103, ADR-0089): the wiki is an Obsidian vault GENERATED from docs/. The generator
+//      validates it fail-closed (resolved alias-free wikilinks, no relative links, images in the vault, every note
+//      reachable from Home, requirement notes linked to their tests and decisions, byte-identical rebuilds) and proves
+//      each detector with a negative control. The publish workflow must publish only from develop and must verify the
+//      published wiki against the generator.
+check('wiki-vault', () => {
+  const out = execFileSync(process.execPath, [join(pkgRoot, 'scripts', 'build-wiki.mjs')], { stdio: 'pipe' }).toString();
+  assert(/^wiki-vault: PASS/m.test(out), `build-wiki.mjs did not pass: ${out.trim()}`);
+  const workflow = readFileSync(join(pkgRoot, '.github', 'workflows', 'wiki-publish.yml'), 'utf8').replace(/\r\n/g, '\n');
+  assert(/push:\n\s+branches:\n\s+- develop\n/.test(workflow), 'wiki-publish must publish on pushes to develop');
+  assert(workflow.includes("github.ref == 'refs/heads/develop'"), 'wiki-publish must refuse to publish any other ref');
+  assert(workflow.includes('node scripts/build-wiki.mjs --out .wiki'), 'wiki-publish must write the generated vault');
+  assert(/node scripts\/build-wiki\.mjs --check "\$RUNNER_TEMP\/wiki-verify"/.test(workflow), 'wiki-publish must verify a fresh clone of the published wiki');
+  return { generator: 'scripts/build-wiki.mjs', summary: out.trim().replace(/^wiki-vault: PASS, /, '') };
+});
+
 // 6f. Test & assurance report is generated + current (ISO/IEC/IEEE 29119-3 test report + ISO 10007 status
 //     accounting, LBA-REQ-035): the executed-verification-evidence + configuration-status-accounting record
 //     must match the apparatus it describes (gate inventory + correspondence rules + coverage floors + RTM +

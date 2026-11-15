@@ -131,6 +131,7 @@ progressively.
 | LBA-REQ-101 | The system shall expose the lifecycle and ordered evidence of a local active LabVIEW capture through a pathless, read-only MCP resource contract. | ProjectBuddy #250 needs timely frame/event reads while LBA capture remains active, but the separate stdio MCP server cannot access the extension process's in-memory `activeCapture` and host-specific storage paths are not a stable consumer interface. | `active-capture-session@1` assigns an opaque UUID and lifecycle (`capturing`, `finalizing`, `stopped`, `failed`) to each run. `resources/list` exposes only bounded metadata/session URIs; `resources/read` returns a session/batch or an explicitly requested frame resource. Batches preserve frame/sample sequence and capture timestamps, mark gaps/partial writes, enforce a per-frame size bound, and never expose absolute paths or frame bytes by default. Reads never mutate capture. | `test/active-capture-mcp.mjs` exercises fake Global Storage roots and spawned stdio MCP for pathless discovery, lifecycle, ordered batch cursors, explicit frame resources, and fail-closed malformed/partial/path-traversal cases; gated in `npm test`. |
 
 | LBA-REQ-102 | The system shall record an explicitly requested Windows desktop workload at a bounded operator-selected cadence without locating or launching LabVIEW. | A standalone synthetic UI live proof must not depend on NI activation or inherit an unreviewable 12-fps inference queue. | A separate Capture Desktop command records `desktop-capture` with an integer interval of 1 through 120 seconds (default 60), emits the existing pathless lifecycle/resources, and uses the existing stop/finalization path; Capture LabVIEW Launch retains its 12-fps behavior. | Host-free activation, argument, cadence, and lifecycle fixtures in `npm test`; Windows desktop execution remains a separate live-proof gate. |
+| LBA-REQ-103 | The system shall publish the repository wiki as an Obsidian vault generated from `docs/`, in which every requirement note links its tests and decisions. | The operator could not open the wiki in Obsidian (1.5.2 Marketplace rejection, #64), and hand-maintained pages drift from the governed sources, so the wiki is derived from `docs/`. | `node scripts/build-wiki.mjs` passes: every wikilink resolves, no aliased wikilink or relative Markdown link remains, every image is in the vault, every note is reachable from Home, every `LBA-REQ` note links its RTM tests and ADR-index decisions, two builds are byte-identical, and five negative controls fail closed; after publishing, `--check` finds no drift in a fresh wiki clone. | Run `node scripts/build-wiki.mjs`; gated by `wiki-vault` in `verify-local-gates`; the `wiki-publish` workflow verifies the published wiki with `--check`. |
 
 ---
 
@@ -3121,6 +3122,31 @@ progressively.
   - The existing Stop Capture command finalizes either workload with explicit finalizing/stopped/failed lifecycle and bounded read-only MCP evidence.
   - The existing Capture LabVIEW Launch command retains its launch guards and 12-fps behavior. No capture mutation is added to MCP.
 - Verification: `npm test` covers host-free command registration, cadence validation, metadata, and frame arguments; a disposable Windows desktop proof is required before claiming live qualification.
+
+### LBA-REQ-103: Obsidian-ready wiki generated from docs
+
+- Status: Proven
+- Area: Information for users / configuration management (ISO/IEC/IEEE 26514 delivery; ADR-0089)
+- Statement: The system shall publish the repository wiki as an Obsidian vault generated
+  from `docs/`, in which every requirement note links its tests and decisions.
+- Rationale: The operator could not open the wiki in Obsidian (#64). Deriving the wiki
+  from `docs/`, the governed source, keeps it current by construction.
+- Acceptance Criteria:
+  - `scripts/build-wiki.mjs` builds the vault from `docs/` only: `Home`, the
+    specification notes, one note per requirement (`requirements/LBA-REQ-NNN`), test
+    item (`tests/T-NNN`), and ADR (`architecture/ADR-NNNN`), every other `docs/` page,
+    the documentation images, and the `.obsidian/` settings.
+  - Links are alias-free `[[Page]]` wikilinks that Obsidian and the GitHub wiki read
+    the same way; links to other repository files and issue references become GitHub
+    URLs.
+  - Validation fails closed on an unresolved or aliased wikilink, a relative Markdown
+    link, an image missing from the vault, a note unreachable from `Home`, a requirement
+    note missing a test or decision link, or two builds that differ. Negative controls
+    prove the detectors.
+  - The `wiki-publish` workflow publishes every `develop` change to `docs/` and verifies
+    the published wiki with `--check`.
+- Verification: `node scripts/build-wiki.mjs` (the `wiki-vault` gate) and the
+  `wiki-publish` drift check.
 
 ## Traceability (requirement → architecture view / test)
 

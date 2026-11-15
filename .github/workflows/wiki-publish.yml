@@ -1,0 +1,72 @@
+# Publishes the generated Obsidian vault to the repository wiki (LBA-REQ-103, ADR-0089).
+#
+# docs/ is the single source of truth: scripts/build-wiki.mjs regenerates the whole wiki from it, this workflow
+# commits the result to <repo>.wiki.git, then re-clones the published wiki and compares it with the generator
+# (--check), so the wiki cannot drift from develop. Pull requests validate the vault through the wiki-vault gate in
+# the local gate suite; only develop publishes.
+name: wiki-publish
+
+on:
+  push:
+    branches:
+      - develop
+    paths:
+      - 'docs/**'
+      - 'scripts/build-wiki.mjs'
+      - '.github/workflows/wiki-publish.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wiki-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Wiki / generate, publish, verify
+    if: github.repository == 'svelderrainruiz/labview-benchmark-actor' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the generated pages to the wiki repository
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+
+      - name: Validate the generated vault
+        run: node scripts/build-wiki.mjs
+
+      - name: Check out the wiki
+        uses: actions/checkout@v5
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: .wiki
+
+      - name: Publish the wiki
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          node scripts/build-wiki.mjs --out .wiki
+          cd .wiki
+          git add -A
+          if git diff --cached --quiet; then
+            echo "wiki is already current"
+            exit 0
+          fi
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+            commit --quiet -m "Generate from docs/ at ${SOURCE_SHA}"
+          git push --quiet origin HEAD
+
+      - name: Verify the published wiki (drift check)
+        env:
+          WIKI_URL: https://github.com/${{ github.repository }}.wiki.git
+        run: |
+          git clone --quiet "$WIKI_URL" "$RUNNER_TEMP/wiki-verify"
+          node scripts/build-wiki.mjs --check "$RUNNER_TEMP/wiki-verify"
