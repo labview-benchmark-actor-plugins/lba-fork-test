@@ -7,11 +7,14 @@ import { pathToFileURL } from 'node:url';
 import * as path from 'node:path';
 
 import { registerBenchmarkActorMcpServerProvider } from './mcp/benchmarkActorMcpServerProvider';
+import { ActiveCapturePlane, ActiveCaptureState, buildActiveCaptureSession, newCaptureRunId, writeActiveCaptureSession } from './captureSession';
 import { registerHumanTasks } from './humanTasks';
 import { resolveLbabusExecutable } from './lbabusPath';
 import { reviewerStationForEnvironment } from './reviewerStation';
 import {
   captureMetadataForPlatform,
+  CaptureWorkload,
+  desktopCaptureInterval,
   ffmpegCaptureArgsForPlatform,
   gnomeScreencastScript,
   labviewCandidatesForPlatform,
@@ -484,6 +487,8 @@ interface CorrelatorBuilder {
 interface LaunchCaptureRecord {
   frameCount: number;
   frames: Array<Record<string, unknown>>;
+  workload?: CaptureWorkload;
+  fps?: number;
   [k: string]: unknown;
 }
 
@@ -959,12 +964,15 @@ export function buildCorrelatorModel(
   framesModel: unknown[],
   initialIndex: number,
   markers: unknown,
-  diskNames: unknown
+  diskNames: unknown,
+  capture: { workload?: unknown; fps?: unknown } = {}
 ): { title: string; fps: number; selectedIndex: number; frames: unknown[]; markers: unknown[]; diskNames: unknown } {
   const frames = Array.isArray(framesModel) ? framesModel : [];
   const existingMarkers = Array.isArray(markers) ? markers : [];
   const selectedIndex = clampFrameIndex(initialIndex, frames.length);
-  return { title: 'LabVIEW launch \u2014 frame correlator', fps: 12, selectedIndex, frames, markers: existingMarkers, diskNames };
+  const fps = typeof capture.fps === 'number' && Number.isFinite(capture.fps) && capture.fps > 0 ? capture.fps : 12;
+  const title = capture.workload === 'desktop-capture' ? 'Desktop capture' : 'LabVIEW launch \u2014 frame correlator';
+  return { title, fps, selectedIndex, frames, markers: existingMarkers, diskNames };
 }
 
 /** Map one capture frame + its (webview) image src into the correlator's per-frame model (pure). */
@@ -984,6 +992,10 @@ export function buildCorrelatorFrame(f: Record<string, unknown>, imageSrc: strin
 }
 
 interface ActiveCapture {
+  runId: string;
+  workload: CaptureWorkload;
+  source: string;
+  plane: ActiveCapturePlane;
   dir: string;
   recorder: ChildProcess;
   recorderKind: 'frame-sequence' | 'gnome-video';
@@ -995,6 +1007,22 @@ interface ActiveCapture {
   startedAt: string;
 }
 let activeCapture: ActiveCapture | undefined;
+
+function writeCaptureSessionState(cap: ActiveCapture, state: ActiveCaptureState, stoppedAt: string | undefined, output: vscode.OutputChannel): void {
+  try {
+    writeActiveCaptureSession(cap.dir, buildActiveCaptureSession({
+      runId: cap.runId,
+      workload: cap.workload,
+      state,
+      plane: cap.plane,
+      source: cap.source,
+      startedAt: cap.startedAt,
+      stoppedAt
+    }));
+  } catch (error) {
+    output.appendLine(`active capture session beacon unavailable (${state}): ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
 
 async function startGnomeScreencast(videoTemplate: string, output: vscode.OutputChannel): Promise<{ recorder: ChildProcess; videoFile: string }> {
   const recorder = spawn('gjs', ['-c', gnomeScreencastScript(), videoTemplate], {
@@ -1280,10 +1308,24 @@ async function captureLaunchMprrCommand(context: vscode.ExtensionContext, output
   );
 }
 
-async function captureLaunchCommand(context: vscode.ExtensionContext, output: vscode.OutputChannel): Promise<void> {
+async function captureLaunchCommand(context: vscode.ExtensionContext, output: vscode.OutputChannel, workload: CaptureWorkload = 'labview-launch'): Promise<void> {
   if (activeCapture) {
     void vscode.window.showWarningMessage('A LabVIEW capture is already running. Stop it first.');
     return;
+  }
+  const desktop = workload === 'desktop-capture';
+  if (desktop && process.platform !== 'win32') {
+    void vscode.window.showErrorMessage('Standalone desktop capture currently requires Windows.');
+    return;
+  }
+  let frameIntervalSeconds: number | undefined;
+  if (desktop) {
+    try {
+      frameIntervalSeconds = desktopCaptureInterval(captureCfg<unknown>('desktopCaptureIntervalSeconds', 60));
+    } catch (error) {
+      reportUiError(output, 'Capture Desktop', error);
+      return;
+    }
   }
   if (!['win32', 'linux'].includes(process.platform)) {
     const RUN_MPRR = 'Run mprr capture';
@@ -1296,8 +1338,8 @@ async function captureLaunchCommand(context: vscode.ExtensionContext, output: vs
     }
     return;
   }
-  const labview = resolveLabview();
-  if (!labview) {
+  const labview = desktop ? null : resolveLabview();
+  if (!desktop && !labview) {
     void vscode.window.showErrorMessage(
       process.platform === 'linux'
         ? 'LabVIEW not found. Set "labviewBenchmarkActor.labviewPath" to the LabVIEW 2026 Linux executable.'
@@ -1357,7 +1399,8 @@ async function captureLaunchCommand(context: vscode.ExtensionContext, output: vs
       return;
     }
   }
-  const dir = path.join(capturesRoot(context), `run-${Date.now()}`);
+  const runId = newCaptureRunId();
+  const dir = path.join(capturesRoot(context), `run-${runId}`);
   const framePattern = path.join(dir, 'frame-%05d.png');
   try {
     mkdirSync(dir, { recursive: true });
@@ -1368,7 +1411,7 @@ async function captureLaunchCommand(context: vscode.ExtensionContext, output: vs
   let ffmpegArgs: string[] = [];
   if (!waylandCapture) {
     try {
-      ffmpegArgs = ffmpegCaptureArgsForPlatform(process.platform, framePattern, process.env, x11VideoSize);
+      ffmpegArgs = ffmpegCaptureArgsForPlatform(process.platform, framePattern, process.env, x11VideoSize, frameIntervalSeconds);
     } catch (error) {
       reportUiError(output, 'Capture LabVIEW Launch (ffmpeg arguments)', error);
       return;
@@ -1378,9 +1421,12 @@ async function captureLaunchCommand(context: vscode.ExtensionContext, output: vs
   const startedAt = new Date().toISOString();
   void writeCaptureStatusBeacon(context.extensionUri, dir, (b) => b.buildCapturingStatus({ runDir: dir, startedAt }), output);
   const resourcesFile = path.join(dir, 'resources.jsonl');
+  const captureMetadata = captureMetadataForPlatform(process.platform, sessionType);
+  captureMetadata.workload = workload;
+  if (frameIntervalSeconds !== undefined) captureMetadata.frameIntervalSeconds = frameIntervalSeconds;
   writeFileSync(
     path.join(dir, 'capture-meta.json'),
-    `${JSON.stringify(captureMetadataForPlatform(process.platform, sessionType), null, 2)}\n`,
+    `${JSON.stringify(captureMetadata, null, 2)}\n`,
   );
 
   // 1) Capture the operator-visible desktop: direct ffmpeg on Windows/Xorg, GNOME Shell recorder on Wayland.
@@ -1418,24 +1464,42 @@ async function captureLaunchCommand(context: vscode.ExtensionContext, output: vs
     );
 
   // 3) launch LabVIEW itself.
-  try {
-    spawn(labview, [], { detached: true, stdio: 'ignore' }).unref();
-  } catch (err) {
-    output.appendLine(`LabVIEW launch error: ${err instanceof Error ? err.message : String(err)}`);
+  if (labview) {
+    try {
+      spawn(labview, [], { detached: true, stdio: 'ignore' }).unref();
+    } catch (err) {
+      output.appendLine(`LabVIEW launch error: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
   const status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 1000);
-  status.text = '$(debug-stop) Stop LabVIEW Capture';
+  status.text = desktop ? '$(debug-stop) Stop Desktop Capture' : '$(debug-stop) Stop LabVIEW Capture';
   status.tooltip = 'Stop the LabVIEW-launch capture and open the frame correlator';
   status.command = 'labviewBenchmarkActor.stopCapture';
   status.backgroundColor = new vscode.ThemeColor('statusBarItem.warningBackground');
   status.show();
 
-  activeCapture = { dir, recorder, recorderKind, ffmpegCommand: ffmpeg, framePattern, videoFile, sampler, status, startedAt };
-  output.appendLine(`capture started: ${dir} (${captureMetadataForPlatform(process.platform, sessionType).source} 12fps + CPU/RAM/disk; LabVIEW launching)`);
+  const captureOwner: ActiveCapture = {
+    runId,
+    workload,
+    source: String(captureMetadata.source),
+    plane: process.platform === 'win32' ? 'WIN' : 'LINUX',
+    dir,
+    recorder,
+    recorderKind,
+    ffmpegCommand: ffmpeg,
+    framePattern,
+    videoFile,
+    sampler,
+    status,
+    startedAt
+  };
+  activeCapture = captureOwner;
+  writeCaptureSessionState(captureOwner, 'capturing', undefined, output);
+  output.appendLine(`capture started: ${dir} (${captureOwner.source} 12fps + CPU/RAM/disk; LabVIEW launching)`);
   void vscode.window
     .showInformationMessage(
-      'Capturing the visible LabVIEW launch at 12 fps. Interact with LabVIEW to create benchmark variations, then click "Stop LabVIEW Capture" in the status bar.',
+      desktop ? `Recording the desktop every ${frameIntervalSeconds} seconds.` : 'Capturing the visible LabVIEW launch at 12 fps. Interact with LabVIEW to create benchmark variations, then click "Stop LabVIEW Capture" in the status bar.',
       'Stop now'
     )
     .then((a) => {
@@ -1449,6 +1513,7 @@ async function stopCaptureCommand(context: vscode.ExtensionContext, output: vsco
     void vscode.window.showInformationMessage('No LabVIEW capture is running.');
     return;
   }
+  writeCaptureSessionState(cap, 'finalizing', undefined, output);
   activeCapture = undefined;
   cap.status.dispose();
   try {
@@ -1496,6 +1561,7 @@ async function stopCaptureCommand(context: vscode.ExtensionContext, output: vsco
     } catch (error) {
       const stoppedAt = new Date().toISOString();
       const message = error instanceof Error ? error.message : String(error);
+      writeCaptureSessionState(cap, 'failed', stoppedAt, output);
       await writeCaptureStatusBeacon(context.extensionUri, cap.dir, (b) => b.buildFailedStatus({ runDir: cap.dir, startedAt: cap.startedAt, stoppedAt, error: message }), output);
       reportUiError(output, 'Finalize visible Wayland capture', error);
       return;
@@ -1509,11 +1575,13 @@ async function stopCaptureCommand(context: vscode.ExtensionContext, output: vsco
     // peak-write frame, so the correlator opens THERE -- the human + agent land on the evidence, not frame 0.
     const samples = readResourceSamples(cap.dir);
     const status = await writeCaptureStatusBeacon(context.extensionUri, cap.dir, (b) => b.buildCaptureStatus(record, samples, { runDir: cap.dir, startedAt: cap.startedAt, stoppedAt }), output);
+    writeCaptureSessionState(cap, 'stopped', stoppedAt, output);
     const peakIndex = peakFrameIndexOf(status);
     await openCorrelatorForCapture(context, output, cap.dir, record, peakIndex);
     output.appendLine(`capture stopped: ${record.frameCount} frames -> correlator @ frame ${peakIndex + 1} (peak write; beacon written)`);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
+    writeCaptureSessionState(cap, 'failed', stoppedAt, output);
     await writeCaptureStatusBeacon(context.extensionUri, cap.dir, (b) => b.buildFailedStatus({ runDir: cap.dir, startedAt: cap.startedAt, stoppedAt, error: message }), output);
     reportUiError(output, 'Assemble LabVIEW capture', err);
   }
@@ -1547,7 +1615,7 @@ export function assembleCaptureFromDir(dir: string, builder: CaptureBuilder): La
   const metaFile = path.join(dir, 'capture-meta.json');
   if (existsSync(metaFile)) {
     const parsed = JSON.parse(readFileSync(metaFile, 'utf8')) as Partial<typeof meta>;
-    if (parsed.workload === 'labview-launch'
+    if ((parsed.workload === 'labview-launch' || parsed.workload === 'desktop-capture')
       && ['WIN', 'LINUX'].includes(String(parsed.plane))
       && ['ffmpeg-gdigrab', 'ffmpeg-x11grab', 'gnome-shell-screencast'].includes(String(parsed.source))) {
       meta = parsed as typeof meta;
@@ -1557,7 +1625,7 @@ export function assembleCaptureFromDir(dir: string, builder: CaptureBuilder): La
     frames,
     resourceSamples,
     startMs: firstFrameMs,
-    fps: 12,
+    fps: meta.workload === 'desktop-capture' ? 1 / desktopCaptureInterval(meta.frameIntervalSeconds) : 12,
     meta,
   });
   writeFileSync(path.join(dir, 'capture.json'), `${JSON.stringify(record, null, 2)}\n`);
@@ -1582,7 +1650,7 @@ async function openCorrelatorForCapture(
     buildCorrelatorFrame(f, panel.webview.asWebviewUri(vscode.Uri.file(path.join(dir, String(f.image)))).toString())
   );
   // Auto-jump to the beacon's peak-write frame (clamped inside buildCorrelatorModel): open on the evidence, not frame 0.
-  const model = buildCorrelatorModel(framesModel, initialIndex, record.markers, record.diskNames);
+  const model = buildCorrelatorModel(framesModel, initialIndex, record.markers, record.diskNames, record);
   panel.webview.html = correlator.buildFrameCorrelatorHtml(model, getNonce(), panel.webview.cspSource);
 
   // Persist a CLICK marker into the capture metadata ("mouse click -> label in metadata"): the webview posts
@@ -2070,6 +2138,9 @@ export function activate(context: vscode.ExtensionContext): void {
     ),
     vscode.commands.registerCommand('labviewBenchmarkActor.captureLaunch', () =>
       captureLaunchCommand(context, output)
+    ),
+    vscode.commands.registerCommand('labviewBenchmarkActor.captureDesktop', () =>
+      captureLaunchCommand(context, output, 'desktop-capture')
     ),
     vscode.commands.registerCommand('labviewBenchmarkActor.captureLaunchMprr', () =>
       captureLaunchMprrCommand(context, output)

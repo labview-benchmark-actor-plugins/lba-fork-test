@@ -30,7 +30,8 @@ const missingArtifact = structuredClone(baseline);
 assert.equal(assessReleaseRisk(missingArtifact, { artifactExists: () => false, scoreBaseline }).ok, false);
 
 const driftedScore = structuredClone(scoreBaseline);
-driftedScore.gates.dod.confidence = 'High';
+// DoD is PASS/High since ADR-0087; the earlier Med value is now a drift the evaluator must refuse.
+driftedScore.gates.dod.confidence = 'Med';
 assert.equal(assessReleaseRisk(baseline, { artifactExists: () => true, scoreBaseline: driftedScore }).ok, false);
 
 console.log('release-risk: PASS');

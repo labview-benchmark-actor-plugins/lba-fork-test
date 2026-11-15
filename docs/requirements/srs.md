@@ -1,6 +1,6 @@
 # labview-benchmark-actor — Software Requirements Specification
 
-> Standards baseline: `repo-standards-review` v0.2.19. Requirements follow
+> Standards baseline: `repo-standards-review` v0.4.2. Requirements follow
 > ISO/IEC/IEEE 29148 §5 (requirement quality: verifiable, unambiguous,
 > traceable). Requirement IDs are `LBA-REQ-NNN`; acceptance criteria are cited
 > by position as `LBA-REQ-NNN.M`.
@@ -125,6 +125,12 @@ progressively.
 | LBA-REQ-095 | The system shall bind extension, AGENTS, `lbabus`, and human-task SemVer to one release definition, emit deterministic noninteractive task receipts, and admit a stable Marketplace release only after its bytes match the canonical GitHub Release, so review chronology and released system identity cannot drift. | Signed 1.4.1 review rejected unindexed task output, ambiguous clocks, independent internal versions, and Marketplace-first publication. | `release-components.json` is checked by a repository precommit hook and local gate; tasks use dedicated terminals and indexed UTC/monotonic receipt events; the publish workflow requires and hashes the existing GitHub Release VSIX before stable `vsce publish`. | `test/human-task-runner.mjs`, `test/release-components.mjs`, and the `release-component-versioning` local gate prove clock/index receipts, drift rejection, final staged metadata, target-main release cutting, and GitHub-first stable publication. |
 | LBA-REQ-096 | The generated agent contract shall preserve the exact standards-workbench score and conservatively overlay every `-` Missing Proof cell with evidence-counted candidate risk and artifact-dependent forward actions, so a static PASS cannot be mistaken for release readiness. | repo-standards-review correctly found the repository artifacts mature, but its six `-` cells did not represent human, hosted, cross-plane, immutable-release, Marketplace, or experiment-lifecycle proof. | `standards-score-baseline.json` and `release-risk-baseline.json` retain both score layers; a pure evaluator derives 12/28 BLOCKED, requires committed artifacts for present proof, and fails on drift; Governance Review and AGENTS expose all six risks/actions. | `test/release-risk.mjs` plus `standards-release-risk-baseline` prove score derivation, artifact resolution, gate completeness, exact workbench identity, AGENTS awareness, and receipt wiring. |
 | LBA-REQ-097 | The system shall classify every experiment lifecycle and continuously verify before verdict that prohibited experiments do not reach production and the local CHANGELOG/system-version/test/gate/correspondence/package KPI is current, so prototypes cannot silently become active implementations. | Historical and exploratory directories outlive their learning; without lifecycle and production boundaries they can be reused accidentally, while end-loaded release checks allow incremental documentation drift. | RTM paths govern active experiments; an override manifest classifies the remainder; a pure verifier rejects gaps/references; quick/full local KPI scripts retain machine receipts and AGENTS states numeric targets. | `test/experiment-governance.mjs` plus `experiment-lifecycle-local-kpi` prove full inventory, prohibited-reference rejection, superseded replacement, KPI wiring, and agent guidance. |
+| LBA-REQ-098 | The system shall gate autonomous actor benchmark execution through an enrolled-signer protocol that binds freshness, target plane, allowlisted workload, exact candidate identity, replay state, plus an actor-signed outcome to one request digest. | The governed mesh binds dispatch through fulfillment, but host-driven SSH and hypervisor controls cannot prove that an actor independently authorized the task or prevent a captured request from being replayed against another candidate. | `autonomousActorProtocol.mjs` builds and validates Ed25519-signed request/response envelopes over the existing bounded `bus-msg@1` transport, requiring a short expiry, requester nonce, candidate commit/tree/bundle SHA-256, local workload allowlist, one-task concurrency, content-addressed artifacts, and bounded failure codes. | `node experiments/mesh-fulfillment/autonomousActorProtocol.selftest.mjs` proves an authorized request plus signed success/BUSY outcomes while rejecting expiry, replay, unallowlisted work, tampering, un-enrolled requesters, request rebinding, and unbounded failures; gated by `mesh-autonomous-actor-protocol`. |
+| LBA-REQ-099 | The system shall run each autonomous actor as a persistent cross-platform `lbabus` service that durably admits one fixed local workload per signed nonce, stores bounded artifacts in guest-local content-addressed storage, and retries cached actor-signed outcomes without re-execution. | A signed protocol alone does not own live delivery, restart state, one-task concurrency, constrained subprocess invocation, or response loss; SSH-per-task would retain the host as the execution plane. | Linux uses the Node 24 service/daemon with systemd; Windows uses a native Windows PowerShell 5 daemon, Startup persistence, fixed-path Git OpenSSL Ed25519, and a fixed PowerShell LabVIEWCLI workload. Both bind the same `bus-msg@1` metadata and signed protocol without request-derived commands. | `node scripts/lba.mjs actor-service-check` runs 31 protocol/service/daemon/PowerShell cases, including canonical JSON and digest parity with `attest.mjs`; live Windows evidence proves reboot persistence, enrolled request verification, fixed LabVIEW result `3`, and an actor-signed response accepted by `validateActorResponse`; gated by `mesh-autonomous-actor-service`. |
+| LBA-REQ-100 | The system shall reduce a complete signed cross-plane autonomous actor response set of at least three distinct actors to one fail-closed candidate-bound consume decision. | The live N=3 proof required manual request/result correlation and decision assembly, so a missing, duplicated, forged, wrong-task, wrong-answer, or candidate-drifted response could be mishandled outside the actor protocol. | `autonomousN3Controller.mjs` builds one signed actor-bound request per roster entry and revalidates every requester envelope, actor signature, task, plane, exact candidate, unique response, `SUCCESS`, and fixed known answer before emitting `autonomous-n3-decision@1` with `consume:true`. | `node experiments/mesh-fulfillment/autonomousN3Controller.selftest.mjs` proves the complete N=3 path across ten cases; `lba actor-n3-decide` emits the same decision from explicit dispatch/response/key/sealed-descriptor files; gated by `mesh-autonomous-n3-controller`. |
+| LBA-REQ-101 | The system shall expose the lifecycle and ordered evidence of a local active LabVIEW capture through a pathless, read-only MCP resource contract. | ProjectBuddy #250 needs timely frame/event reads while LBA capture remains active, but the separate stdio MCP server cannot access the extension process's in-memory `activeCapture` and host-specific storage paths are not a stable consumer interface. | `active-capture-session@1` assigns an opaque UUID and lifecycle (`capturing`, `finalizing`, `stopped`, `failed`) to each run. `resources/list` exposes only bounded metadata/session URIs; `resources/read` returns a session/batch or an explicitly requested frame resource. Batches preserve frame/sample sequence and capture timestamps, mark gaps/partial writes, enforce a per-frame size bound, and never expose absolute paths or frame bytes by default. Reads never mutate capture. | `test/active-capture-mcp.mjs` exercises fake Global Storage roots and spawned stdio MCP for pathless discovery, lifecycle, ordered batch cursors, explicit frame resources, and fail-closed malformed/partial/path-traversal cases; gated in `npm test`. |
+
+| LBA-REQ-102 | The system shall record an explicitly requested Windows desktop workload at a bounded operator-selected cadence without locating or launching LabVIEW. | A standalone synthetic UI live proof must not depend on NI activation or inherit an unreviewable 12-fps inference queue. | A separate Capture Desktop command records `desktop-capture` with an integer interval of 1 through 120 seconds (default 60), emits the existing pathless lifecycle/resources, and uses the existing stop/finalization path; Capture LabVIEW Launch retains its 12-fps behavior. | Host-free activation, argument, cadence, and lifecycle fixtures in `npm test`; Windows desktop execution remains a separate live-proof gate. |
 
 ---
 
@@ -282,7 +288,7 @@ progressively.
   `labview-benchmark-actor` repository without losing traceability.
 - Acceptance Criteria:
   - The package overview and CM plan both name `repo-standards-review`
-    **v0.2.19** (commit `d44f210d`).
+    **v0.4.2** (commit `5a3aa9da`).
   - The `docs/` lane layout matches the standards runner's expected structure
     (requirements, architecture, testing, cm, information-for-users, plus the
     information-item map).
@@ -625,7 +631,7 @@ progressively.
 - Acceptance Criteria:
   - The pure JSON-RPC 2.0 handler (`benchmarkActorMcpServer.ts`) answers
     `initialize`, `tools/list`, and `tools/call` over newline-delimited stdio,
-    publishing exactly four tools — `get_host_capabilities`,
+    publishing exactly four core tools — `get_host_capabilities`,
     `get_benchmark_series`, `poll_coordination_bus`, `post_coordination_note` —
     and returns `-32601` / `-32602` for an unknown method / tool.
   - A missing `lbabus` degrades to a soft `isError` tool result, not a transport
@@ -2986,7 +2992,7 @@ progressively.
 - Statement: The generated agent contract shall preserve the exact standards-workbench score and conservatively
   overlay every `-` Missing Proof cell with evidence-counted candidate risk and artifact-dependent forward actions,
   so a static PASS cannot be mistaken for release readiness.
-- Rationale: The pinned repo-standards-review 0.2.19 workbench correctly reports static repository maturity as 25/25
+- Rationale: The pinned repo-standards-review workbench (v0.4.2; re-certified under ADR-0087) correctly reports static repository maturity as 25/25
   with six PASS gates, but it does not model the exact candidate's human, hosted, cross-plane, canonical-release, and
   Marketplace-closeout proofs.
 - Acceptance Criteria:
@@ -3021,6 +3027,100 @@ progressively.
     retains a KPI receipt before verdict. That receipt binds the exact source commit and VSIX hash/size and carries
     explicit coverage, gate, and correspondence counters.
   - Generated AGENTS states numeric targets and distinguishes local KPI PASS from release readiness.
+
+### LBA-REQ-098: Signed autonomous actor protocol
+
+- Status: Proven
+- Area: Deployment / security / operation (ADR-0081)
+- Statement: The system shall gate autonomous actor benchmark execution through an enrolled-signer protocol that
+  binds freshness, target plane, allowlisted workload, exact candidate identity, replay state, plus an actor-signed
+  outcome to one request digest.
+- Rationale: Existing live mesh runners depend on host SSH or hypervisor control. A production actor must decide
+  locally whether one bus-delivered task is authorized, current, intended for its plane, and bound to exact code.
+- Acceptance Criteria:
+  - Requests carry an enrolled requester signature, dispatch/task identity, target plane, nonce, issued/expiry
+    timestamps, an allowlisted workload, and candidate source commit/tree/bundle SHA-256.
+  - Validation rejects an un-enrolled or forged signer, wrong plane, expiry, a lifetime over 15 minutes, replayed
+    requester/nonce, candidate mutation, or workload outside the local allowlist.
+  - Responses bind the request digest, actor identity, plane, status, timestamps, bounded artifact metadata, and an
+    enrolled actor signature.
+  - Success requires a result with no failure; rejection, busy, or failure requires a bounded failure code.
+  - The protocol stays dependency-free and fits within the existing one-MiB `bus-msg@1` TCP frame.
+
+### LBA-REQ-099: Persistent lbabus autonomous actor service
+
+- Status: Proven
+- Area: Deployment / security / operation (ADR-0082)
+- Statement: The system shall run each autonomous actor as a persistent cross-platform `lbabus` service that
+  durably admits one fixed local workload per signed nonce, stores bounded artifacts in guest-local content-addressed
+  storage, and retries cached actor-signed outcomes without re-execution.
+- Rationale: The signed protocol needs an actor-owned process that survives duplicate delivery, response loss, and
+  restart while preventing request-controlled command execution and concurrent LabVIEW workloads.
+- Acceptance Criteria:
+  - The daemon launches `lbabus net listen --log` and accepts only `bus-msg@1` `CLAIM` frames whose sender and task
+    metadata bind to the signed request.
+  - Nonce, signed outcome, and active-task state are atomically persisted; restart does not execute an accepted
+    request twice and turns an interrupted active task into a signed bounded failure.
+  - Exactly one fixed local adapter executes at a time without a shell or request-derived argv; another valid request
+    receives an actor-signed `BUSY` outcome.
+  - The actor requires its configured candidate commit, tree, and bundle SHA-256 to equal the signed request.
+  - Results are at most 64 KiB; each artifact is at most 16 MiB and stored guest-locally by SHA-256 while only bounded
+    metadata crosses the bus.
+  - The receive-log cursor advances only after `lbabus net send --message-file` succeeds; retries return the cached
+    actor-signed outcome without re-executing.
+  - Linux actors run the service under pinned Node 24; Windows actors run only native Windows PowerShell 5 for the
+    daemon and fixed LabVIEWCLI workload, using fixed-path OpenSSL solely for protocol-compatible Ed25519 operations.
+  - Windows canonical JSON and SHA-256 output match `attest.mjs`, the actor key remains guest-local, inbound `lbabus`
+    is narrowly firewall-scoped to the configured port, and Startup persistence survives reboot and interactive logon.
+
+### LBA-REQ-100: Fail-closed autonomous N>=3 controller decision
+
+- Status: Proven
+- Area: Coordination / security / operation (ADR-0083)
+- Statement: The system shall reduce a complete signed cross-plane autonomous actor response set of at least three
+  distinct actors to one fail-closed candidate-bound consume decision.
+- Rationale: Persistent actors own execution and signed delivery, but the controller must still prove that the full
+  expected roster responded exactly once for the sealed candidate before any result is consumed.
+- Acceptance Criteria:
+  - Dispatch construction requires at least three distinct actor identities spanning LINUX and WIN and emits one
+    requester-signed, actor-specific task per roster entry.
+  - Decision reduction revalidates each requester envelope and actor response against enrolled public keys, expected
+    actor identity, task, plane, request digest, and exact dispatch candidate.
+  - Every expected actor returns exactly one signed `SUCCESS` whose fixed known-answer result is observed 3, expected
+    3, verdict `PASS`; missing, duplicate, unknown-task, failed, forged, tampered, or wrong-answer outcomes block.
+  - The dispatch candidate equals the independently sealed commit/tree/bundle descriptor before `consume:true`.
+  - The dependency-free reducer emits one portable `autonomous-n3-decision@1`; `lba actor-n3-decide` accepts only
+    explicit local files and exits nonzero when the decision does not consume.
+
+### LBA-REQ-101: Read-only active-capture MCP resources
+
+- Status: Planned
+- Area: Agentic infrastructure / MCP capture resources (ADR-0084)
+- Statement: The system shall expose the lifecycle and ordered evidence of a local active LabVIEW capture through a pathless, read-only MCP resource contract.
+- Rationale: ProjectBuddy #250 needs timely frame/event reads while LBA capture remains active, but the separate stdio MCP server cannot access the extension process's in-memory `activeCapture` and host-specific storage paths are not a stable consumer interface. Actor issue #45 requests the producer contract; ProjectBuddy consumes it.
+- Acceptance Criteria:
+  - The versioned `active-capture-session@1` record contains an opaque UUID, workload/plane/source, started time, lifecycle state (`capturing`, `finalizing`, `stopped`, `failed`), and available evidence classes; no absolute storage path is returned.
+  - `resources/list` exposes only a bounded set of pathless session metadata resources. A session read returns capture state and the latest frame/sample sequence watermarks; a bounded batch resource returns ordered frame/event metadata with sequence numbers and timestamps.
+  - PNG bytes are returned only through an explicit per-run `resources/read` URI after size, PNG structure/chunk-CRC, and SHA-256 validation. File reads are capped at the admitted size plus one detection byte and reject identity, timestamp, or size changes between stat, open, and completed read. The default listing/batch never embeds frame bytes.
+  - Partial frame files and partial JSONL tails are not presented as complete records. Sequence gaps, stale cursors, changed hashes, malformed status, unknown state, and path traversal fail closed or produce explicit incomplete status.
+  - A `finalizing` beacon is written before stop/finalization begins. Read operations never start, pause, stop, finalize, or otherwise mutate capture.
+  - The stdio server receives its capture-root from the extension provider's Global Storage configuration, never from MCP arguments. The reader remains root-confined and exposes no local paths in results or errors.
+  - No frame or run data is sent over the lbabus coordination bus.
+- Verification: Run `node test/active-capture-mcp.mjs` after `npm run compile`; `npm test` also checks the generated `docs/mcp-tools.md`. Tests use only temporary fixtures and a spawned local stdio server; no real capture, VM, or model is required.
+- Change Guidance: Preserve the four core tools in LBA-REQ-019. Add resources as a separate read-only capability under ADR-0084; depend on Actor issue #45 for the consumer contract. Keep raw frame bytes explicit and bounded, never return storage paths, and leave the existing finalized `capture.json` contract unchanged.
+
+### LBA-REQ-102: Standalone Windows desktop capture
+
+- Status: Planned
+- Area: Capture / agentic infrastructure (ADR-0085)
+- Statement: The system shall record an explicitly requested Windows desktop workload at a bounded operator-selected cadence without locating or launching LabVIEW.
+- Acceptance Criteria:
+  - A separate Capture Desktop command requires Windows and the existing ffmpeg readiness checks, not a LabVIEW executable, licence, or launch.
+  - The operator selects an integer frame interval from 1 through 120 seconds; the default is 60 seconds. Invalid values fail before starting a recorder.
+  - Session and finalized capture metadata identify `desktop-capture`; cadence is retained with the capture and actual frame timestamps remain authoritative.
+  - The existing Stop Capture command finalizes either workload with explicit finalizing/stopped/failed lifecycle and bounded read-only MCP evidence.
+  - The existing Capture LabVIEW Launch command retains its launch guards and 12-fps behavior. No capture mutation is added to MCP.
+- Verification: `npm test` covers host-free command registration, cadence validation, metadata, and frame arguments; a disposable Windows desktop proof is required before claiming live qualification.
 
 ## Traceability (requirement → architecture view / test)
 
@@ -3123,3 +3223,6 @@ progressively.
 | LBA-REQ-095 | Configuration management / operation / release (system SemVer and canonical distribution) | T-095 |
 | LBA-REQ-096 | Assurance / operation / release (standards scorecard release-risk overlay) | T-096 |
 | LBA-REQ-097 | Configuration management / assurance / operation (experiment lifecycle and local KPI) | T-097 |
+| LBA-REQ-098 | Deployment / security / operation (signed autonomous actor protocol) | T-098 |
+| LBA-REQ-099 | Deployment / security / operation (persistent lbabus autonomous actor service) | T-099 |
+| LBA-REQ-100 | Coordination / security / operation (autonomous N>=3 controller decision) | T-100 |

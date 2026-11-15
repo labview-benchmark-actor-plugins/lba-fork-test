@@ -2,17 +2,17 @@
   "name": "labview-benchmark-actor",
   "displayName": "LabVIEW Benchmark Actor",
   "description": "Standalone agentic benchmark-actor infrastructure with cross-plane coordination (lbabus) for LabVIEW benchmarking.",
-  "version": "1.4.14",
+  "version": "1.5.2",
   "publisher": "svelderrainruiz",
   "license": "0BSD",
   "author": "Sergio Velderrain",
   "repository": {
     "type": "git",
-    "url": "https://github.com/LabVIEW-Community-CI-CD/labview-benchmark-actor"
+    "url": "https://github.com/svelderrainruiz/labview-benchmark-actor"
   },
-  "homepage": "https://github.com/LabVIEW-Community-CI-CD/labview-benchmark-actor#readme",
+  "homepage": "https://github.com/svelderrainruiz/labview-benchmark-actor#readme",
   "bugs": {
-    "url": "https://github.com/LabVIEW-Community-CI-CD/labview-benchmark-actor/issues"
+    "url": "https://github.com/svelderrainruiz/labview-benchmark-actor/issues"
   },
   "qna": false,
   "icon": "media/icon.png",
@@ -99,6 +99,10 @@
       {
         "command": "labviewBenchmarkActor.captureLaunch",
         "title": "LabVIEW Benchmark Actor: Capture LabVIEW Launch"
+      },
+      {
+        "command": "labviewBenchmarkActor.captureDesktop",
+        "title": "LabVIEW Benchmark Actor: Capture Desktop"
       },
       {
         "command": "labviewBenchmarkActor.captureLaunchMprr",
@@ -249,6 +253,13 @@
     "configuration": {
       "title": "LabVIEW Benchmark Actor",
       "properties": {
+        "labviewBenchmarkActor.desktopCaptureIntervalSeconds": {
+          "type": "integer",
+          "default": 60,
+          "minimum": 1,
+          "maximum": 120,
+          "description": "Frame interval for standalone Windows desktop capture."
+        },
         "labviewBenchmarkActor.ffmpegPath": {
           "type": "string",
           "default": "",
@@ -335,7 +346,7 @@
     "release:check-components": "node scripts/release-components.mjs",
     "ci:local:quick": "node scripts/local-continuous-kpi.mjs --quick",
     "ci:local": "node scripts/local-continuous-kpi.mjs",
-    "test": "npm run compile && node test/extension-activation.mjs && node test/viewer-render.mjs && node test/viewer-plain-render.mjs && node test/panels-render.mjs && node test/mcp-server.mjs && node test/human-task-runner.mjs && node test/process-command.mjs && node test/lbabus-path.mjs && node test/local-kpi-core.mjs && node test/branch-coverage.mjs && node test/experiment-governance.mjs && node test/release-risk.mjs && node test/release-components.mjs && node test/normalize-vsix.mjs && node test/verify-published-vsix.mjs && node scripts/mcpToolDoc.mjs --check docs/mcp-tools.md",
+    "test": "npm run compile && node test/extension-activation.mjs && node test/viewer-render.mjs && node test/viewer-plain-render.mjs && node test/panels-render.mjs && node test/active-capture-mcp.mjs && node test/mcp-server.mjs && node test/human-task-runner.mjs && node test/process-command.mjs && node test/lbabus-path.mjs && node test/local-kpi-core.mjs && node test/branch-coverage.mjs && node test/experiment-governance.mjs && node test/release-risk.mjs && node test/release-components.mjs && node test/normalize-vsix.mjs && node test/verify-published-vsix.mjs && node scripts/mcpToolDoc.mjs --check docs/mcp-tools.md",
     "package": "vsce package --out labview-benchmark-actor.vsix && node scripts/normalize-vsix.mjs labview-benchmark-actor.vsix",
     "test:coverage": "node scripts/coverage.mjs",
     "coverage:bump": "node scripts/coverage.mjs --bump"

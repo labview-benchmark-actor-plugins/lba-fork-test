@@ -31,8 +31,11 @@
 2. Bump changed component versions and the extension in `release-components.json`, synchronize
    package/component sources, and stamp `## [X.Y.Z]` in `CHANGELOG.md`. The repository precommit
    hook requires these release metadata files to be staged in their final state.
-3. On the pinned node, build the normalized artifact: `npm run package`. Capture the
-   candidate `commit` and the packaged `vsixSha256`.
+3. On the pinned node, build the normalized artifact: `npm run package`, from a clean
+   `git worktree` of the candidate commit so no ignored local file is packaged (#55). Capture
+   the candidate `commit` and the packaged `vsixSha256`. Packaging fails closed unless every
+   Marketplace link in the packaged manifest names the canonical repository
+   (`scripts/verify-vsix-links.mjs`, #56).
 4. **Re-`npm run package` after every later seal/back-merge commit and assert the sha is
    unchanged** — the packaged file set must not move once reviewed (normalization is
    proven by `scripts/normalize-vsix.mjs`).
@@ -90,6 +93,11 @@ First **discover where your key is + the exact station-bound sign commands** wit
 `scripts/lba.mjs signing-status` (set `LBA_VM_PASS` so it can read the VM's
 `labviewBenchmarkActor.reviewerKeyPath`; it reports the key path + existence, never the
 key material). Then:
+
+> VS Code's extension page shows the Issues and Repository links only from the Marketplace
+> listing. Before publishing it shows the previous release's links, or none when offline, so the
+> reviewer cannot judge them there. The packaged links are gated at step 1.3, and the live
+> listing's links at close-out (#56).
 
 1. **Visual verdict.** Stage the candidate (`stage-local-vsix.ps1`), then point the renderer
    at the target with `reviewer-workstation/render-verdict.sh` (`set-target`, then `collect`
@@ -189,7 +197,8 @@ key material). Then:
 2. Assert `git merge-base --is-ancestor <release-tip> main` **and** `… develop` — the
    release tip is an ancestor of both, so the planes stay in sync.
 3. Re-check the Marketplace listing (the gallery API lags a few minutes) with
-   `npm run lba -- release-verify-published X.Y.Z`. A successful query records
+   `npm run lba -- release-verify-published X.Y.Z`. It also requires every listing link,
+   Issues (`Links.Support`) included, to name the canonical repository (#56). A successful query records
    `~/lba-vm-share/marketplace-verification-X.Y.Z.json`, allowing the resumable driver to
    recognize phase 13 only after the required release-tip back-merge to `develop` is also
    proven. Record the closeout in the regenerated `docs/testing/test-report.md` counts.

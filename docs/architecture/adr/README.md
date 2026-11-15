@@ -1,6 +1,6 @@
 # Architecture Decision Records — labview-benchmark-actor
 
-> Standards baseline: `repo-standards-review` v0.2.19. ADRs support the 42010
+> Standards baseline: `repo-standards-review` v0.4.2. ADRs support the 42010
 > architecture description. Format: Status / Context / Decision / Consequences /
 > Traces-to.
 
@@ -88,6 +88,14 @@
 | [ADR-0078](ADR-0078-system-semver-and-canonical-release.md) | Govern extension, AGENTS, lbabus, and human-task SemVer through one release-components definition and a precommit metadata/CHANGELOG gate; emit indexed dual-clock noninteractive task receipts; make the signed GitHub Release canonical and admit only its byte-identical VSIX to the stable Marketplace channel. | WIN | Accepted | LBA-REQ-095 |
 | [ADR-0079](ADR-0079-standards-release-risk-overlay.md) | Preserve the exact repo-standards-review static 25/25 and six-PASS baseline while conservatively interpreting every `-` Missing Proof cell through an artifact-resolved release overlay. Generated AGENTS and Governance Review expose the 12/28 BLOCKED baseline, residual risks, and artifact-dependent forward actions. | WIN | Accepted | LBA-REQ-096 |
 | [ADR-0080](ADR-0080-experiment-lifecycle-local-kpi.md) | Classify every experiment as RTM-governed or explicit active/prototype/superseded/retired lifecycle, prohibit non-active/evidence-only production references, require superseded replacements, and publish a local continuous KPI for CHANGELOG/system-version/tests/gates/correspondence/reproducible package readiness before verdict. | WIN | Accepted | LBA-REQ-097 |
+| [ADR-0081](ADR-0081-signed-autonomous-actor-protocol.md) | Gate bus-native actor execution with enrolled requester signatures, short-lived replay-resistant requests bound to plane/workload/candidate identity, plus enrolled actor-signed request-bound outcomes and bounded failure codes. | LINUX | Accepted | LBA-REQ-098 |
+| [ADR-0082](ADR-0082-persistent-lbabus-autonomous-actor-service.md) | Run a persistent cross-platform Node actor over `lbabus net listen/send`, with durable nonce/outcome/active state, exact candidate matching, one fixed shell-free adapter, bounded guest-local CAS, interruption recovery, and cursor-after-send idempotent delivery. | LINUX | Accepted | LBA-REQ-099 |
+| [ADR-0083](ADR-0083-fail-closed-autonomous-n3-controller.md) | Build actor-bound signed requests and reduce a complete cross-plane N>=3 response set to one candidate-bound consume decision, failing closed on response cardinality, signature, task, plane, known-answer, or sealed-candidate mismatch. | LINUX | Accepted | LBA-REQ-100 |
+| [ADR-0084](ADR-0084-active-capture-mcp-resources.md) | Expose ordered active-capture session metadata and bounded frame resources through the existing read-only MCP server without host-path disclosure or capture mutation. | LINUX | Proposed | LBA-REQ-101 |
+
+| [ADR-0085](ADR-0085-standalone-desktop-capture.md) | Record a standalone Windows desktop workload at an explicit bounded cadence without LabVIEW discovery or launch, preserving existing capture defaults and read-only MCP ownership. | LINUX | Proposed | LBA-REQ-102 |
+| [ADR-0086](ADR-0086-pin-mprr-contract-to-published-fixture.md) | Pin the absorbed mprr contract to mprr's published shared contract (implementation stays self-owned) | LINUX | Accepted | LBA-REQ-003, LBA-REQ-005, LBA-REQ-009 |
+| [ADR-0087](ADR-0087-recertify-standards-baseline-rsr-consumer-kit.md) | Re-certify the standards baseline at repo-standards-review v0.4.1 through the RSR consumer kit (amends ADR-0079) | LINUX | Accepted | LBA-REQ-008, LBA-REQ-096 |
 
 Numbering is split by owner to avoid collisions: WIN takes 0001–0002 (+0005, 0006, 0007, 0008, 0009),
 LINUX takes 0003–0004 (+0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0021, 0022, 0023, 0024). Add new ADRs by extending your own range.

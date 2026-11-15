@@ -23,7 +23,8 @@ export function assessReleaseRisk(baseline, { artifactExists = () => true, score
       continue;
     }
     const staticGate = baseline.staticBaseline?.gates?.[gate];
-    const expectedConfidence = gate === 'dod' ? 'Med' : 'High';
+    // Every static gate, DoD included, is PASS/High since the v0.4.1 re-certification (ADR-0087).
+    const expectedConfidence = 'High';
     if (
       staticGate?.status !== 'PASS'
       || staticGate?.confidence !== expectedConfidence

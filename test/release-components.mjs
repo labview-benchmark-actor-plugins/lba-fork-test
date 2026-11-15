@@ -4,6 +4,16 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { verifyReleaseComponents, verifyStagedReleaseMetadata } from '../scripts/release-components.mjs';
 
+const extensionManifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+const repositoryUrl = 'https://github.com/svelderrainruiz/labview-benchmark-actor';
+assert.equal(extensionManifest.name, 'labview-benchmark-actor');
+assert.equal(extensionManifest.publisher, 'svelderrainruiz');
+assert.equal(extensionManifest.repository.url, repositoryUrl);
+assert.equal(extensionManifest.homepage, `${repositoryUrl}#readme`);
+assert.equal(extensionManifest.bugs.url, `${repositoryUrl}/issues`);
+const readme = readFileSync(new URL('../README.md', import.meta.url), 'utf8');
+assert.ok(readme.includes(`](${repositoryUrl}/issues)`), 'Marketplace README must link to the independent issue tracker');
+
 const releaseRiskBaseline = JSON.parse(readFileSync(new URL('../release-risk-baseline.json', import.meta.url), 'utf8'));
 const standardsScoreBaseline = JSON.parse(readFileSync(new URL('../standards-score-baseline.json', import.meta.url), 'utf8'));
 const releaseComponents = JSON.parse(readFileSync(new URL('../release-components.json', import.meta.url), 'utf8'));
@@ -95,7 +105,8 @@ assert.equal(verifyStagedReleaseMetadata({
 assert.equal(verifyStagedReleaseMetadata({
   staged,
   unstaged: [],
-  previous: { extension: '1.4.7', agents: '0.3.11', lbabus: '0.15.6', humanTasks: '1.0.6', experimentGovernance: '1.0.1' },
+  // The task bundle version is unchanged from the current one, so the staged task change lacks its bump.
+  previous: { extension: '1.4.7', agents: '0.3.11', lbabus: '0.15.6', humanTasks: base.components.humanTasks, experimentGovernance: '1.0.1' },
   current: base.components,
 }).ok, false);
 assert.equal(verifyStagedReleaseMetadata({
@@ -103,6 +114,13 @@ assert.equal(verifyStagedReleaseMetadata({
     'reviewer-workstation/composite-release-decision-receipt.json',
     'tools/collab-cli/release-agreement.json',
   ],
+  unstaged: [],
+  previous: base.components,
+  current: base.components,
+}).ok, true);
+// Enrolling a release's reviewer keys is release data, not an lbabus change.
+assert.equal(verifyStagedReleaseMetadata({
+  staged: ['tools/collab-cli/reviewer-allowlist.json'],
   unstaged: [],
   previous: base.components,
   current: base.components,

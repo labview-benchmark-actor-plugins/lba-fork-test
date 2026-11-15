@@ -6,6 +6,48 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-11-14
+
+1.5.0 and 1.5.1 were not released separately; their changes ship in 1.5.2.
+
+### Added
+
+- Pin the absorbed mprr contract to the shared contract mprr publishes (`v0.1.1`, ADR-0086): the vendored file is SHA-256 pinned, and the `mprr-contract-matches-pinned-fixture` gate checks the ring constants, capture-ring packet layout, launch-capture field presence and boot-benchmark schema against it, replacing `mprr-absorbed-constants-match-mprr-spec`.
+- Specify standalone Windows desktop capture with a bounded operator-selected cadence under LBA-REQ-102 / ADR-0085; live qualification remains gated.
+- Pathless active-capture MCP resources are specified under ADR-0084 / LBA-REQ-101; implementation and fixture tests are in progress.
+
+### Changed
+
+- Re-certify the standards baseline at `repo-standards-review` v0.4.1 (ADR-0087, #50).
+  - The RSR consumer kit now pins the release (`.repo-standards-review.json`, `.cruft.json`), adds its LF
+    checkout rules, and checks the pin against the published release manifest in CI.
+  - `release-components.json`, both retained baselines, and the agent contract name the same release.
+  - The v0.4.1 workbench run scores 25/25 with all six gates PASS. DoD confidence is now High because pull
+    requests carry the Definition of Done checklist.
+- Pull requests carry the seven Definition of Done exit criteria as a checklist, which the
+  `dod-definition-present` gate keeps equal to the DoD table.
+- The VSIX excludes the consumer-kit files (`.cruft.json`, `.repo-standards-review.json`,
+  `.repo-standards-review/`), which are repository governance metadata, and the packaging-leak guard keeps
+  them out so Windows and Linux builds stay byte-identical.
+- The agent contract scorecard rows must match the retained baseline status and confidence for every gate.
+- Human task bundle v1.0.7: the release-risk evaluator now expects PASS/High/dash for every static gate, DoD
+  included.
+- Move the RSR consumer kit and the governance pin to `repo-standards-review` v0.4.2 (#52, ADR-0087 amended).
+  - `cruft update` applied cleanly: the kit now LF-pins its root files, `.repo-standards-review.json` and
+    `.cruft.json`, as VITechnologies/projectbuddy#280 requested after #51.
+  - The v0.4.2 workbench deep run is byte-identical to the v0.4.1 capture (raw score
+    `9e801f9a…b112`): 25/25, all six gates PASS/High, no contradictions, 319 scripts pinned to LF. Both
+    baselines, `release-components.json`, the agent contract and the stamps now name v0.4.2.
+
+### Fixed
+
+- MCP activation fixtures now dispose their handoff watcher and use temporary storage, preventing Windows test processes from hanging after passing assertions.
+- Active-capture candidate reads now reject PNG chunk-CRC corruption and files replaced or grown during stat/open/read; descriptor reads are explicitly size-capped.
+- Windows local gates now pass native PowerShell script paths to `pwsh` instead of URL pathnames with a leading slash.
+- The autonomous Linux actor ordering selftest now normalizes CRLF checkouts on Windows.
+- Marketplace repository, homepage, support, and README documentation links now point to the independent
+  `svelderrainruiz/labview-benchmark-actor` repository.
+
 ## [1.4.14] - 2026-08-10
 
 ### Fixed

@@ -150,6 +150,18 @@
       "validFrom": "1.4.14",
       "validThrough": "1.4.14",
       "purposes": ["quorum"]
+    },
+    {
+      "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASTuGk3m37HTulYIpRU8KZIB/w0ZZw8wdIfRel+9hUf4=\n-----END PUBLIC KEY-----\n",
+      "validFrom": "1.5.2",
+      "validThrough": "1.5.2",
+      "purposes": ["visual"]
+    },
+    {
+      "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAd8k6SAY6aXTqDme2oZwOyaBlVQTQ2pGfU6CZgDZrdak=\n-----END PUBLIC KEY-----\n",
+      "validFrom": "1.5.2",
+      "validThrough": "1.5.2",
+      "purposes": ["quorum"]
     }
   ]
 }

@@ -22,11 +22,13 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { corroborationConfidence, REAL_READBACK_CASES, validateColonOcrFidelity } from './corroboration-confidence-reference.mjs';
-import { ingestShortPackets, MPRR_RING_SCHEMA, TICKS_PER_MS, DEFAULT_BLOCK_DURATION_MS, DEFAULT_BLOCK_DURATION_TICKS, ADMISSION_CAPACITY_HEADROOM, AUTHORITATIVE_BOUNDARY_VARIATION_PCT, NORMAL_LOAD_BOUNDARY_VARIATION_PCT, createShortRing, CLI_DEFAULT_CAPACITY_BYTES } from './mprr-ring/mprrRing.mjs';
+import { ingestShortPackets, MPRR_RING_SCHEMA, TICKS_PER_MS, DEFAULT_BLOCK_DURATION_MS, DEFAULT_BLOCK_DURATION_TICKS, ADMISSION_CAPACITY_HEADROOM, AUTHORITATIVE_BOUNDARY_VARIATION_PCT, NORMAL_LOAD_BOUNDARY_VARIATION_PCT, createShortRing, CLI_DEFAULT_CAPACITY_BYTES, MIN_CAPACITY_BYTES, requiredThreeBlockCapacityBytes } from './mprr-ring/mprrRing.mjs';
+import { loadMprrContract, compareRingConstants, compareCaptureRingPacket, compareLaunchCaptureRecord, compareBootBenchmarkSchema, isContractSchema } from './mprr-ring/mprrContract.mjs';
 import { projectViewerSeries, seriesHash } from './mprr-ring/mprrViewerSeries.mjs';
 import { correlateDualStream } from './mprr-ring/mprrDualPacket.mjs';
 import { summarizeViAnalyzerReport } from './vi-analyzer/viAnalyzerResult.mjs';
 import { validateViAnalyzerReport } from './vi-analyzer/validate-vi-analyzer-report.mjs';
+import { checkVsixLinks, REQUIRED_LINKS } from '../scripts/verify-vsix-links.mjs';
 import { parseAsciiReport, parseSummary } from './vi-analyzer/parse-vi-analyzer-ascii.mjs';
 import { verifyManifest as verifyExtensionAgentsManifest, agentsSha256, readManifest as readExtensionAgentsManifest, AGENTS_MD as EXTENSION_AGENTS_MD } from '../scripts/agentsManifest.mjs';
 import { normalizeZipTimestamps } from '../scripts/normalize-vsix.mjs';
@@ -39,7 +41,7 @@ import { parseJournalMonotonic } from './mprr-boot-benchmark/journal-monotonic.m
 import { createVmwareBackend, vmwareSerialConfigVmx, vmwareVncConfigVmx, upsertVmxConfig } from './mprr-boot-benchmark/capture-backend-vmware.mjs';
 import { bootBenchmarkDiff } from './mprr-boot-benchmark/boot-benchmark-diff.mjs';
 import { bootbenchDiff } from './mesh-runs/bootbench-diff.mjs';
-import { PACKET_BYTES, PACKET_VERSION, OFFSETS, MILESTONE_IDS, encodeCaptureFrame, decodeCaptureFrame, writeCaptureFrame, readCaptureFrames } from './mprr-capture-ring/capture-ring.mjs';
+import { CAPTURE_RING_SCHEMA, FLAG_SETTLED, PACKET_BYTES, PACKET_VERSION, OFFSETS, MILESTONE_IDS, encodeCaptureFrame, decodeCaptureFrame, writeCaptureFrame, readCaptureFrames } from './mprr-capture-ring/capture-ring.mjs';
 import { ringFrameFromDescriptor, makeRingSink } from './mprr-capture-ring/vmware-ring-capture.mjs';
 import { recordFromRing } from './mprr-capture-ring/capture-ring-recorder.mjs';
 import { fiducialDhash } from './mprr-capture-ring/fiducial-vnc-server.mjs';
@@ -351,7 +353,17 @@ check('mesh-actor-registration-requires-activation', () => {
 //     confirms a fully-governed requirement and fails closed on a missing one. Extend the tool freely;
 //     the gate catches regressions.
 check('agent-tooling-selftest', () => {
-  execFileSync(process.execPath, [join(pkgRoot, 'scripts', 'lba.mjs'), 'selftest'], { stdio: 'pipe' });
+  try {
+    execFileSync(process.execPath, [join(pkgRoot, 'scripts', 'lba.mjs'), 'selftest'], { stdio: 'pipe' });
+  } catch (error) {
+    const output = [error.stdout, error.stderr]
+      .filter(Boolean)
+      .map((value) => Buffer.isBuffer(value) ? value.toString('utf8') : String(value))
+      .filter(Boolean)
+      .join('\n')
+      .trim();
+    throw new Error(`scripts/lba.mjs selftest failed${output ? `:\n${output}` : ''}`);
+  }
   return { tool: 'scripts/lba.mjs', note: 'iteratively-refined agent governance + verification helper' };
 });
 
@@ -1310,12 +1322,12 @@ check('ollama-comparison-core-receipt-green', () => {
 // 17. The documentation package carries the repo-standards-review stamp and the requirement IDs are
 //     contiguous with no renumbering after the standalone-repo move (LBA-REQ-008, T-008). Static/CM.
 check('docs-stamp-and-no-id-renumbering', () => {
-  // (a) Stamp: README + cm-plan name repo-standards-review v0.2.19 (commit d44f210d).
+  // (a) Stamp: README + cm-plan name repo-standards-review v0.4.2 (commit 5a3aa9da).
   for (const rel of ['README.md', join('docs', 'cm', 'cm-plan.md')]) {
     const text = readFileSync(join(pkgRoot, rel), 'utf8');
     assert(/repo-standards-review/.test(text), `${rel} must name repo-standards-review`);
-    assert(/v0\.2\.19/.test(text), `${rel} must name the v0.2.19 baseline`);
-    assert(/d44f210d/.test(text), `${rel} must cite the d44f210d commit`);
+    assert(/v0\.4\.2/.test(text), `${rel} must name the v0.4.2 baseline`);
+    assert(/5a3aa9da/.test(text), `${rel} must cite the 5a3aa9da commit`);
   }
   // (b) The docs/ lane layout the standards runner expects.
   for (const lane of ['architecture', 'cm', 'requirements', 'testing']) {
@@ -1490,10 +1502,10 @@ check('human-task-shortcuts', () => {
   assert(runner.includes('STANDARDS_ROOT') && runner.includes('governance.standardsRootDefault'), 'governance task lacks local standards-corpus discovery');
   assert(runner.includes("`${corpus}:/standards:ro`") && runner.includes("'STANDARDS_ROOT=/standards'"), 'governance task does not mount standards read-only');
   assert(runner.includes('governance.standardsReviewCommit') && runner.includes('governance.workbenchDigest'), 'governance task does not pin its source commit and image digest');
-  assert(provider.includes("HUMAN_TASKS_VERSION = '1.0.6'"), 'task provider lacks bundle version 1.0.6');
-  assert(runner.includes("HUMAN_TASKS_VERSION = '1.0.6'"), 'task runner lacks bundle version 1.0.6');
+  assert(provider.includes("HUMAN_TASKS_VERSION = '1.0.7'"), 'task provider lacks bundle version 1.0.7');
+  assert(runner.includes("HUMAN_TASKS_VERSION = '1.0.7'"), 'task runner lacks bundle version 1.0.7');
   const agents = readFileSync(join(pkgRoot, 'extension-agents', 'AGENTS.md'), 'utf8');
-  assert(agents.includes('Compound human tasks — bundle v1.0.6'), 'generated AGENTS lacks task bundle version');
+  assert(agents.includes('Compound human tasks — bundle v1.0.7'), 'generated AGENTS lacks task bundle version');
   assert(runner.includes("process.platform === 'win32' ? 'npm.cmd' : 'npm'"), 'human task runner does not use the Windows npm command shim');
   assert(provider.includes('LBA_LBABUS_PATH: resolveLbabusExecutable()'), 'human tasks do not receive the resolved lbabus executable');
   assert(runner.includes("process.env.LBA_LBABUS_PATH || ''"), 'human task runner ignores the resolved lbabus executable');
@@ -1589,13 +1601,21 @@ check('release-component-versioning', () => {
   assert(versions.canonicalDistribution === 'github-release' && versions.marketplaceChannel === 'stable', 'distribution policy drifted');
   assert(/^[0-9a-f]{40}$/.test(versions.governance.standardsReviewCommit), 'standards-review commit is not pinned');
   assert(/^sha256:[0-9a-f]{64}$/.test(versions.governance.workbenchDigest), 'governance workbench digest is not pinned');
-  assert(versions.governance.standardsReviewVersion === '0.2.19', 'standards-review version is not pinned');
+  assert(versions.governance.standardsReviewVersion === '0.4.2', 'standards-review version is not pinned');
+  // The RSR consumer kit (ADR-0087) pins the same release that certifies this repository.
+  const kitPin = readJson('.repo-standards-review.json');
+  assert(
+    kitPin.rsr_tag === `v${versions.governance.standardsReviewVersion}`
+      && kitPin.rsr_commit === versions.governance.standardsReviewCommit
+      && kitPin.workbench_image === `${versions.governance.workbenchImage}@${versions.governance.workbenchDigest}`,
+    'the RSR consumer-kit pin (.repo-standards-review.json) drifted from the governance pin',
+  );
   assert(riskBaseline.releaseVersion === versions.extension, 'release-risk version drifted');
   assert(riskBaseline.source.workbenchVersion === versions.governance.standardsReviewVersion, 'release-risk workbench version drifted');
   assert(riskBaseline.source.standardsReviewCommit === versions.governance.standardsReviewCommit, 'release-risk source commit drifted');
   assert(riskBaseline.source.workbenchDigest === versions.governance.workbenchDigest, 'release-risk image digest drifted');
   assert(riskCore.includes("const GATES = ['coverage', 'cm', 'req', 'arch', 'doc', 'dod']"), 'release-risk evaluator lacks all scorecard gates');
-  assert(agents.includes('repo-standards-review 0.2.19') && agents.includes('12/28 (42.9%)') && agents.includes('Prioritize DoD blockers'), 'generated AGENTS lacks forward risk awareness');
+  assert(agents.includes('repo-standards-review 0.4.2') && agents.includes('12/28 (42.9%)') && agents.includes('Prioritize DoD blockers'), 'generated AGENTS lacks forward risk awareness');
   assert(hook.includes('release-components.mjs --precommit'), 'precommit release-component gate missing');
   assert(
     workflow.includes('inputs.publish_marketplace')
@@ -1610,12 +1630,36 @@ check('release-component-versioning', () => {
   return { extension: versions.extension, agents: versions.agents, lbabus: versions.lbabus, humanTasks: versions.humanTasks };
 });
 
+check('vsix-marketplace-links', () => {
+  // #56: the Marketplace listing and VS Code's extension page show the packaged manifest's Links.*, so packaging
+  // must refuse any link outside the canonical repository (1.4.14 shipped Issues pointing at a retired owner).
+  const normalize = readFileSync(join(pkgRoot, 'scripts', 'normalize-vsix.mjs'), 'utf8');
+  assert(/if \(!reportVsixLinks\(path\)\) process\.exit\(1\);/.test(normalize), 'npm run package must fail closed on the Marketplace link check');
+  const pkg = JSON.parse(readFileSync(join(pkgRoot, 'package.json'), 'utf8'));
+  const repo = pkg.repository.url.replace(/\.git$/, '');
+  const manifest = (links) => Object.entries(links)
+    .map(([name, value]) => `<Property Id="Microsoft.VisualStudio.Services.Links.${name}" Value="${value}" />`).join('\n');
+  const good = { Source: `${repo}.git`, Getstarted: `${repo}.git`, GitHub: `${repo}.git`, Support: `${repo}/issues`, Learn: `${repo}#readme` };
+  assert(REQUIRED_LINKS.every((name) => good[name]), 'the fixture must cover every required link');
+  const pass = checkVsixLinks({ manifestXml: manifest(good), packageJson: pkg, texts: { 'extension/readme.md': 'ok' } });
+  assert(pass.ok, `a canonical manifest must pass: ${pass.findings.join('; ')}`);
+  const fails = {
+    'retired Support owner': checkVsixLinks({ manifestXml: manifest({ ...good, Support: 'https://github.com/LabVIEW-Community-CI-CD/labview-benchmark-actor/issues' }), packageJson: pkg }),
+    'sibling repository': checkVsixLinks({ manifestXml: manifest({ ...good, Source: `${repo}-fork.git` }), packageJson: pkg }),
+    'missing Learn link': checkVsixLinks({ manifestXml: manifest({ ...good, Learn: '' }), packageJson: pkg }),
+    'retired owner in packaged text': checkVsixLinks({ manifestXml: manifest(good), packageJson: pkg, texts: { 'extension/readme.md': 'see LabVIEW-Community-CI-CD' } }),
+    'bugs.url off the repository': checkVsixLinks({ manifestXml: manifest(good), packageJson: { ...pkg, bugs: { url: 'https://example.com/issues' } } }),
+  };
+  for (const [name, result] of Object.entries(fails)) assert(!result.ok, `the link check must reject a ${name}`);
+  return { canonical: repo, rejected: Object.keys(fails).length };
+});
+
 check('standards-release-risk-baseline', () => {
   const baseline = readJson('release-risk-baseline.json');
   const scoreBaseline = readJson('standards-score-baseline.json');
   const gateNames = ['coverage', 'cm', 'req', 'arch', 'doc', 'dod'];
   assert(baseline.schema === 'labview-benchmark-actor/release-risk-baseline@1', 'release-risk schema mismatch');
-  assert(baseline.source.workbenchVersion === '0.2.19' && baseline.source.scoreSchema === '1.2.0', 'workbench score identity drifted');
+  assert(baseline.source.workbenchVersion === '0.4.2' && baseline.source.scoreSchema === '1.3.0', 'workbench score identity drifted');
   assert(scoreBaseline.source.workbenchVersion === baseline.source.workbenchVersion, 'retained score workbench version drifted');
   assert(scoreBaseline.source.standardsReviewCommit === baseline.source.standardsReviewCommit, 'retained score source commit drifted');
   assert(scoreBaseline.source.workbenchDigest === baseline.source.workbenchDigest, 'retained score image digest drifted');
@@ -1638,8 +1682,12 @@ check('standards-release-risk-baseline', () => {
   assert(runner.includes('verifyGovernedRisk(risk, governance.releaseRisk)'), 'runtime risk does not match the governed system tuple');
   assert(runner.includes("if (risk.status !== 'READY')"), 'Release Candidate Check does not fail closed on blocked risk');
   const agents = readFileSync(join(pkgRoot, 'extension-agents', 'AGENTS.md'), 'utf8');
-  for (const signal of ['repo-standards-review 0.2.19', '12/28 (42.9%)', 'Missing Proof cells are `-`', 'Do not publish', 'expected artifact']) {
+  for (const signal of ['repo-standards-review 0.4.2', '12/28 (42.9%)', 'Missing Proof cells are `-`', 'Do not publish', 'expected artifact']) {
     assert(agents.includes(signal), `generated AGENTS lacks release-risk signal '${signal}'`);
+  }
+  for (const gate of gateNames) {
+    const row = `| ${gate} | ${baseline.staticBaseline.gates[gate].status} / ${baseline.staticBaseline.gates[gate].confidence} |`;
+    assert(agents.includes(row), `generated AGENTS scorecard row drifted from the baseline: expected '${row}'`);
   }
   return { workbenchMaturity: '25/25', staticGates: '6/6 PASS', releaseEvidence: `${present}/${proofs.length}`, status: 'BLOCKED' };
 });
@@ -2203,6 +2251,31 @@ check('mesh-cross-plane-corroborate', () => {
   return { selftest: 'meshCorroborate 8/8', corroborated: 'committed LINUX+WIN collection', requirement: 'LBA-REQ-092', adr: 'ADR-0075' };
 });
 
+// LBA-REQ-098 / ADR-0081: an autonomous actor accepts only an enrolled-requester signed, short-lived,
+// replay-resistant, plane/workload/candidate-bound request and emits an enrolled actor-signed outcome bound to the
+// exact request digest. The protocol selftest covers authorized success + BUSY and nine fail-closed mutations.
+check('mesh-autonomous-actor-protocol', () => {
+  const dir = join(here, 'mesh-fulfillment');
+  execFileSync(process.execPath, [join(dir, 'autonomousActorProtocol.selftest.mjs')], { stdio: 'pipe' });
+  return { selftest: 'autonomousActorProtocol 11/11', requirement: 'LBA-REQ-098', adr: 'ADR-0081' };
+});
+
+// LBA-REQ-099 / ADR-0082: the persistent cross-platform autonomous actor owns durable nonce/outcome/active state,
+// one fixed shell-free workload, exact-candidate admission, bounded guest-local CAS, interruption recovery, and
+// lbabus JSONL cursor-after-send delivery. Failed response sends retry cached signed outcomes without re-execution.
+check('mesh-autonomous-actor-service', () => {
+  execFileSync(process.execPath, [join(pkgRoot, 'scripts', 'lba.mjs'), 'actor-service-check'], { stdio: 'pipe' });
+  return { selftests: 'protocol 11/11 + service 10/10 + daemon 7/7', requirement: 'LBA-REQ-099', adr: 'ADR-0082' };
+});
+
+// LBA-REQ-100 / ADR-0083: the controller revalidates the complete enrolled-signed cross-plane N>=3 response set,
+// exact actor/task/plane/request/candidate bindings, and the fixed known answer before emitting consume:true.
+check('mesh-autonomous-n3-controller', () => {
+  const dir = join(here, 'mesh-fulfillment');
+  execFileSync(process.execPath, [join(dir, 'autonomousN3Controller.selftest.mjs')], { stdio: 'pipe' });
+  return { selftest: 'autonomousN3Controller 10/10', requirement: 'LBA-REQ-100', adr: 'ADR-0083' };
+});
+
 // LBA-REQ-077 / ADR-0058: the opt-in VERIFIED TIER -- each returned actor receipt is SIGNED by the actor's
 // ENROLLED Ed25519 key (reusing the ADR-0016 acg-provenance attestation engine), and a verified-receipt-collection@1
 // admits a receipt only when it carries a valid attestation from its declared, enrolled actor. Asserts the
@@ -2318,7 +2391,7 @@ check('mcp-server-surface-contract', () => {
   // #123 packaging-leak guard (static, every-PR half; the empirical `vsce ls` allow-set is the agent-last-gate's
   // vsix-allow-set check at release/staging). The heavy non-runtime trees -- above all the reviewer VM disk
   // behind the 14 GB leak -- MUST stay excluded from the .vsix, and this runs on both OS runners.
-  for (const deny of ['reviewer-workstation/**', '**/.vagrant/**', 'node_modules/**', 'experiments/**', 'tools/**', 'docs/**', 'cleanroom/**', 'scripts/**']) {
+  for (const deny of ['reviewer-workstation/**', '**/.vagrant/**', 'node_modules/**', 'experiments/**', 'tools/**', 'docs/**', 'cleanroom/**', 'scripts/**', '.cruft.json', '.repo-standards-review.json', '.repo-standards-review/**']) {
     assert(ignore.includes(deny), `.vscodeignore must exclude ${deny} (#123 packaging-leak guard)`);
   }
   const lastGate = readFileSync(join(pkgRoot, 'scripts', 'agent-last-gate.mjs'), 'utf8');
@@ -2364,19 +2437,54 @@ check('mprr-absorbed-self-owned-not-external', () => {
   assert(/External canonical reference:/.test('- External canonical reference: mprr'), 'guard must catch a reintroduced ADR reference label');
   return { adr: 'ADR-0009', deBrandedEnv: ['LBA_MPRR_ROOT', 'LBA_CONFORMANCE_OUT'], backCompat: 'VIHS_MPRR_ROOT' };
 });
-// The absorbed ring is a FAITHFUL mirror only while its GOVERNED constants equal the real mprr spec.
-// Verified against the local svelderrainruiz/mprr source: MPRR-REQ-106 (45 s block, <=1% normal / >5%
-// non-authoritative) + Program.cs GovernedDefaultBlockDurationMilliseconds=45_000; MPRR-REQ-110 admission +
-// Program.cs Math.Ceiling(window * 1.10); the writer's mprr-self-test-synthetic-monotonic-100ns tick
-// (RelativeMilliseconds * 10_000). Pinning them here fails closed if the absorbed mirror drifts (ADR-0009).
-check('mprr-absorbed-constants-match-mprr-spec', () => {
-  assert(TICKS_PER_MS === 10_000n, `100ns tick: TICKS_PER_MS must be 10_000n, got ${TICKS_PER_MS}`);
-  assert(DEFAULT_BLOCK_DURATION_MS === 45_000, `MPRR-REQ-106 block duration must be 45_000 ms, got ${DEFAULT_BLOCK_DURATION_MS}`);
-  assert(DEFAULT_BLOCK_DURATION_TICKS === 450_000_000n, `block duration must be 450_000_000 ticks, got ${DEFAULT_BLOCK_DURATION_TICKS}`);
-  assert(NORMAL_LOAD_BOUNDARY_VARIATION_PCT === 1.0, `MPRR-REQ-106 normal-load boundary target must be 1.0 pct, got ${NORMAL_LOAD_BOUNDARY_VARIATION_PCT}`);
-  assert(AUTHORITATIVE_BOUNDARY_VARIATION_PCT === 5.0, `MPRR-REQ-106 non-authoritative boundary must be 5.0 pct, got ${AUTHORITATIVE_BOUNDARY_VARIATION_PCT}`);
-  assert(ADMISSION_CAPACITY_HEADROOM === 1.1, `MPRR-REQ-110 admission headroom must be 1.1 (10 pct), got ${ADMISSION_CAPACITY_HEADROOM}`);
-  return { blockMs: DEFAULT_BLOCK_DURATION_MS, headroomPct: (ADMISSION_CAPACITY_HEADROOM - 1) * 100, ticksPerMs: Number(TICKS_PER_MS) };
+// The absorbed implementation stays self-owned (ADR-0009), but its CONTRACT is pinned to the shared contract
+// that mprr publishes (ADR-0086): experiments/mprr-ring/contract/ holds the file vendored from the tagged mprr
+// release plus its SHA-256 pin. Ring constants, the capture-ring packet layout, launch-capture field presence and
+// the boot-benchmark schema must all agree with it, and existing LBA identifiers must stay accepted aliases.
+check('mprr-contract-matches-pinned-fixture', () => {
+  const { pin, contract, sha256 } = loadMprrContract();
+  assert(/^v\d+\.\d+\.\d+$/.test(pin.tag) && pin.source === 'gitlab.com/svelderrainruiz/mprr', `pin must name a tagged mprr release, got ${pin.source}@${pin.tag}`);
+  const ring = { TICKS_PER_MS, DEFAULT_BLOCK_DURATION_MS, DEFAULT_BLOCK_DURATION_TICKS, NORMAL_LOAD_BOUNDARY_VARIATION_PCT,
+    AUTHORITATIVE_BOUNDARY_VARIATION_PCT, ADMISSION_CAPACITY_HEADROOM, CLI_DEFAULT_CAPACITY_BYTES, MIN_CAPACITY_BYTES, requiredThreeBlockCapacityBytes };
+  const packet = { CAPTURE_RING_SCHEMA, PACKET_BYTES, PACKET_VERSION, OFFSETS, FLAG_SETTLED, MILESTONE_IDS };
+  const launch = buildLaunchCapture({
+    frames: [{ ms: 0, imageFile: 'f0.png', imageBytes: 10, dhashHex: 'ffffffffffffffff' }, { ms: 100, imageFile: 'f1.png', imageBytes: 10 }],
+    // counters and disks make the optional frame and record fields appear, so renaming them is caught too.
+    resourceSamples: [{ ms: 0, cpuPct: 10, ramMb: 512, diskPct: 1, counters: { 'processor-time': 10 }, disks: [{ name: 'C:', writeMBs: 1, readMBs: 2 }] }],
+    meta: { workload: 'gate', plane: 'WIN', screenW: 1, screenH: 1 },
+  });
+  const bootSchema = JSON.parse(readFileSync(join(here, 'mprr-boot-benchmark', 'boot-benchmark-v1.schema.json'), 'utf8'));
+  const mismatches = [
+    ...compareRingConstants(contract, ring),
+    ...compareCaptureRingPacket(contract, packet),
+    ...compareLaunchCaptureRecord(contract, launch),
+    ...compareBootBenchmarkSchema(contract, bootSchema),
+  ];
+  assert(mismatches.length === 0, `implementation disagrees with mprr ${pin.tag}: ${mismatches.join('; ')}`);
+  assert(isContractSchema(contract, 'mprr/boot-benchmark@1', 'labview-benchmark-actor/boot-benchmark-v1')
+    && isContractSchema(contract, 'mprr/boot-benchmark@1', 'mprr/boot-benchmark@1')
+    && !isContractSchema(contract, 'mprr/boot-benchmark@1', 'labview-benchmark-actor/boot-benchmark-v2'),
+  'records must be accepted by canonical identifier or alias, and nothing else');
+  // Teeth: each comparator reports a drifted implementation, and a tampered vendored file fails the pin.
+  assert(compareRingConstants(contract, { ...ring, ADMISSION_CAPACITY_HEADROOM: 1.15 }).length > 0, 'a drifted headroom must be reported');
+  assert(compareCaptureRingPacket(contract, { ...packet, OFFSETS: { ...OFFSETS, flags: 22 } }).length > 0, 'a drifted packet offset must be reported');
+  const { cpuPct: _dropped, ...frameWithoutCpu } = launch.frames[0];
+  assert(compareLaunchCaptureRecord(contract, { ...launch, frames: [frameWithoutCpu] }).length > 0, 'a missing required frame field must be reported');
+  assert(compareLaunchCaptureRecord(contract, { ...launch, plane: undefined }).length > 0, 'a required key left undefined (dropped from the written JSON) must be reported');
+  assert(compareLaunchCaptureRecord(contract, { ...launch, diskNames: undefined, physicalDisks: launch.diskNames }).length > 0, 'a renamed optional field must be reported');
+  assert(compareLaunchCaptureRecord(contract, { ...launch, dualPacket: { ...launch.dualPacket, frames: [] } }).length > 0, 'a record whose short packets cannot be checked must be reported');
+  assert(compareLaunchCaptureRecord(contract, { ...launch, frames: launch.frames.map((frame) => ({ ...frame, timingTicks64: String(BigInt(frame.tMs) * 1000n) })) }).length > 0, 'a wrong tick rate on frames must be reported');
+  assert(compareBootBenchmarkSchema(contract, { ...bootSchema, required: bootSchema.required.slice(1) }).length > 0, 'a dropped required boot field must be reported');
+  const tampered = join(tmpdir(), `lba-mprr-contract-${process.pid}.json`);
+  writeFileSync(tampered, readFileSync(join(here, 'mprr-ring', 'contract', 'mprr-shared-contract.v1.json'), 'utf8').replace('"value": 45000', '"value": 46000'));
+  try {
+    let rejected = false;
+    try { loadMprrContract(tampered); } catch { rejected = true; }
+    assert(rejected, 'a vendored contract that does not match the pinned SHA-256 must be rejected');
+  } finally {
+    rmSync(tampered, { force: true });
+  }
+  return { tag: pin.tag, sha256: sha256.slice(0, 12), contracts: contract.contracts.length, constants: Object.keys(contract.constants).length };
 });
 
 // boot-benchmark recorder seam (experiments/mprr-boot-benchmark): the boot-as-benchmark sibling of the
@@ -3469,7 +3577,18 @@ check('dod-definition-present', () => {
   const wfText = readFileSync(wf, 'utf8');
   assert(/name:\s*DoD Gate/.test(wfText), 'workflow must publish the "DoD Gate / dod" context (name: DoD Gate + job dod)');
   assert(/job|dod:/.test(wfText) && /verify-local-gates\.mjs/.test(wfText), 'the DoD Gate job must enforce the DoD by running the local gate suite');
-  return { doc: 'docs/dod/definition-of-done.md', context: 'DoD Gate / dod', exitCriteria: 7 };
+  // Every pull request carries the exit criteria as a checklist, named exactly as in the DoD table and in order.
+  const exitCriteria = [...text.matchAll(/^\|\s*\d+\s*\|\s*\*\*([^*]+)\*\*/gm)].map((match) => match[1]);
+  assert(exitCriteria.length === 7, `the DoD exit criteria table must list 7 conditions, found ${exitCriteria.length}`);
+  const template = join(pkgRoot, '.github', 'pull_request_template.md');
+  assert(existsSync(template), 'the pull-request template (.github/pull_request_template.md) must exist');
+  const templateText = readFileSync(template, 'utf8');
+  assert(/^## Definition of Done$/m.test(templateText) && templateText.includes('docs/dod/definition-of-done.md'),
+    'the pull-request template must carry a Definition of Done section that points to the DoD doc');
+  const checklist = [...templateText.matchAll(/^- \[ \] \*\*([^*]+)\*\*/gm)].map((match) => match[1]);
+  assert(JSON.stringify(checklist) === JSON.stringify(exitCriteria),
+    `the pull-request checklist ${JSON.stringify(checklist)} must name the DoD exit criteria ${JSON.stringify(exitCriteria)}`);
+  return { doc: 'docs/dod/definition-of-done.md', context: 'DoD Gate / dod', exitCriteria: exitCriteria.length, prTemplate: '.github/pull_request_template.md' };
 });
 
 // Reproducible .vsix gate (ADR-0066 / LBA-REQ-085): the packaged artifact must be BYTE-REPRODUCIBLE so the

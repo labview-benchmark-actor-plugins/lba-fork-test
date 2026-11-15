@@ -34,6 +34,10 @@
 //   release-cut-github <X.Y.Z> --run <id>  verify the publish-workflow run artifact + cut the immutable ext-v* release (#412)
 //   signing-status               discover + report an enrolled visual or quorum key + where each sign-off runs
 //   capture-preflight            report native LabVIEW launch-capture readiness + selected Linux display mode
+//   actor-service-check          run the signed protocol + persistent service + lbabus daemon selftests
+//   actor-n3-decide              reduce signed actor responses to a fail-closed N>=3 consume decision
+//   provision-linux-actor       install one persistent autonomous actor through verified SSH access
+//   provision-windows-actor     install one native PowerShell 5 actor from an elevated Windows guest console
 //   selftest                     self-check this tool (run by the `agent-tooling-selftest` gate)
 
 import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync, rmSync } from 'node:fs';
@@ -50,8 +54,9 @@ import { stagedOk } from '../reviewer-workstation/release-with-review-drive.mjs'
 import { buildReleaseStage } from '../reviewer-workstation/record-release-stage.mjs';
 import { enrolledReviewerPublicKeys } from '../experiments/handoff-beacon/reviewerVerdict.mjs';
 import { validateLbabusProvisioningPin } from './verify-ubuntu-golden-box.mjs';
+import { decideAutonomousN3 } from '../experiments/mesh-fulfillment/autonomousN3Controller.mjs';
 
-export const ITERATION = 23; // bump when you refine this tool (see the banner above)
+export const ITERATION = 32; // bump when you refine this tool (see the banner above)
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, '..');
@@ -66,6 +71,14 @@ export const PIPELINE = [
   ['regen compliance scorecard', 'experiments/compliance/verify-compliance-posture.mjs'],
   ['verify correspondences', 'experiments/reqs-coverage/verify-correspondences.mjs'],
   ['verify local gates', 'experiments/verify-local-gates.mjs'],
+];
+
+export const AUTONOMOUS_ACTOR_SELFTESTS = [
+  'experiments/mesh-fulfillment/autonomousActorProtocol.selftest.mjs',
+  'experiments/mesh-fulfillment/autonomousActorService.selftest.mjs',
+  'experiments/mesh-fulfillment/autonomousActorDaemon.selftest.mjs',
+  'experiments/mesh-fulfillment/autonomousActorPowerShell.selftest.mjs',
+  'experiments/mesh-fulfillment/autonomousN3Controller.selftest.mjs',
 ];
 
 // ---- the governance surfaces a Proven requirement must appear in ---------------------------------
@@ -401,6 +414,34 @@ export function assertPublished(queryResult, { publisher, name, version } = {}) 
   return { ok: reasons.length === 0, live, versions, latest: versions[0] ?? null, reason: reasons.join('; ') };
 }
 
+// The live listing's links come from the published manifest, and VS Code's extension page shows them (Issues is
+// Links.Support), so a published version must advertise the canonical repository (#56). Pure check over the same
+// extensionquery result; fails closed on a missing version, a missing link, or a link to any other repository.
+export function assertListingLinks(queryResult, { version, repositoryUrl, bugsUrl } = {}) {
+  const key = (url) => String(url ?? '').trim().replace(/\.git$/i, '').replace(/\/+$/, '').toLowerCase();
+  const repo = key(repositoryUrl);
+  const issues = key(bugsUrl);
+  const ext = queryResult?.results?.[0]?.extensions?.[0] ?? null;
+  const entry = (Array.isArray(ext?.versions) ? ext.versions : []).find((v) => String(v.version) === String(version));
+  if (!entry) return { ok: false, links: {}, reason: `version ${version} has no listing entry to check` };
+  const links = {};
+  for (const prop of Array.isArray(entry.properties) ? entry.properties : []) {
+    const match = /^Microsoft\.VisualStudio\.Services\.Links\.(.+)$/.exec(String(prop.key ?? ''));
+    if (match) links[match[1]] = String(prop.value ?? '');
+  }
+  const reasons = [];
+  if (!repo || issues !== `${repo}/issues`) reasons.push(`the expected issues URL ${bugsUrl} is not ${repositoryUrl}/issues`);
+  for (const name of ['Support', 'Source', 'GitHub', 'Learn', 'Getstarted']) {
+    if (!links[name]) reasons.push(`listing has no Links.${name}`);
+  }
+  for (const [name, value] of Object.entries(links)) {
+    const link = key(value);
+    const ok = name === 'Support' ? link === issues : link === repo || link.startsWith(`${repo}#`) || link.startsWith(`${repo}/`);
+    if (!ok) reasons.push(`listing Links.${name} ${value} does not point to ${name === 'Support' ? bugsUrl : repositoryUrl}`);
+  }
+  return { ok: reasons.length === 0, links, reason: reasons.join('; ') };
+}
+
 // Live leg: POST the VS Code Marketplace gallery extensionquery for one extension. `fetchImpl` is injectable so the
 // pure path stays testable; defaults to the global fetch (Node 18+).
 export async function queryMarketplaceExtension({ publisher, name, fetchImpl = globalThis.fetch } = {}) {
@@ -715,6 +756,14 @@ export const COMMANDS = {
           process.exitCode = 1;
           return;
         }
+        const repositoryUrl = typeof pkg.repository === 'string' ? pkg.repository : pkg.repository?.url;
+        const linkCheck = assertListingLinks(q, { version, repositoryUrl, bugsUrl: pkg.bugs?.url });
+        if (!linkCheck.ok) {
+          console.error(`\u2717 ${extId} ${version} is live, but its listing links are wrong: ${linkCheck.reason}`);
+          process.exitCode = 1;
+          return;
+        }
+        console.log(`\u2713 listing Issues link: ${linkCheck.links.Support}`);
         const share = process.env.LBA_VM_SHARE || (process.env.HOME ? join(process.env.HOME, 'lba-vm-share') : '');
         if (!share) {
           console.error('\u2717 Marketplace verification succeeded but no local share is configured; set HOME or LBA_VM_SHARE to persist resumable evidence');
@@ -820,6 +869,47 @@ export const COMMANDS = {
       if (!result.ok) process.exit(1);
     },
   },
+  'actor-service-check': {
+    desc: 'run the signed actor protocol + persistent service + lbabus daemon selftests',
+    run: () => {
+      for (const rel of AUTONOMOUS_ACTOR_SELFTESTS) runScript('autonomous actor', rel);
+      console.log('\n✓ autonomous actor protocol + service + daemon checks complete');
+    },
+  },
+  'actor-n3-decide': {
+    desc: 'reduce signed actor responses to a fail-closed N>=3 consume decision',
+    run: (args) => {
+      const opt = {};
+      for (let index = 0; index < args.length; index += 1) {
+        if (args[index].startsWith('--')) opt[args[index].slice(2)] = args[index + 1] && !args[index + 1].startsWith('--') ? args[(index += 1)] : true;
+      }
+      const required = ['dispatch', 'responses', 'requester-keys', 'actor-keys', 'sealed'];
+      const missing = required.filter((name) => typeof opt[name] !== 'string');
+      if (missing.length > 0) {
+        console.error('usage: lba actor-n3-decide --dispatch <json> --responses <json-array> --requester-keys <json> --actor-keys <json> --sealed <json> [--out <json>]');
+        process.exit(2);
+      }
+      const load = (name) => JSON.parse(readFileSync(resolve(repoRoot, opt[name]), 'utf8'));
+      const decision = decideAutonomousN3({
+        dispatch: load('dispatch'),
+        responses: load('responses'),
+        requesterKeys: load('requester-keys'),
+        actorKeys: load('actor-keys'),
+        sealedCandidate: load('sealed'),
+      });
+      if (typeof opt.out === 'string') writeFileSync(resolve(repoRoot, opt.out), `${JSON.stringify(decision, null, 2)}\n`);
+      console.log(JSON.stringify(decision, null, 2));
+      if (!decision.consume) process.exitCode = 1;
+    },
+  },
+  'provision-linux-actor': {
+    desc: 'install one persistent autonomous Linux actor through verified SSH access',
+    run: (args) => execFileSync('bash', [join(repoRoot, 'scripts/provision-autonomous-linux-actor.sh'), ...args], { stdio: 'inherit' }),
+  },
+  'provision-windows-actor': {
+    desc: 'install one native PowerShell 5 actor from an elevated Windows guest console',
+    run: (args) => execFileSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', join(repoRoot, 'scripts/provision-autonomous-windows-actor.ps1'), ...args], { stdio: 'inherit' }),
+  },
   selftest: {
     desc: 'self-check this tool (run by the agent-tooling-selftest gate)',
     run: () => runSelftest(),
@@ -868,6 +958,30 @@ export const COMMANDS = {
 // ---- selftest (extend me) -----------------------------------------------------------------------
 const SELFTEST = [
   ['every pipeline script exists', () => PIPELINE.every(([, rel]) => existsSync(join(repoRoot, rel)))],
+  ['every autonomous-actor focused-check script exists', () => AUTONOMOUS_ACTOR_SELFTESTS.every((rel) => existsSync(join(repoRoot, rel)))],
+  ['autonomous Linux actor ordering check is line-ending independent', () => {
+    const provisioner = read('scripts/provision-autonomous-linux-actor.sh');
+    const normalize = (text) => text.replace(/\r\n/g, '\n');
+    const expected = 'After=network-online.target\nWants=network-online.target';
+    const crlfFixture = expected.replaceAll('\n', '\r\n');
+    return normalize(provisioner).includes(expected)
+      && normalize(crlfFixture).includes(expected)
+      && !normalize(provisioner).includes('After=network-online.target graphical.target');
+  }],
+  ['autonomous Linux actor exposes LabVIEWCLI shared writable state through its strict sandbox', () => {
+    const provisioner = read('scripts/provision-autonomous-linux-actor.sh');
+    return provisioner.includes('ProtectSystem=strict')
+      && provisioner.includes('ReadWritePaths=/var/lib/lba-autonomous-actor /home/actor /tmp /usr/local/natinst/share/nilvcli')
+      && !provisioner.includes('PrivateTmp=true');
+  }],
+  ['autonomous Windows actor requires native PowerShell 5 and never provisions Node', () => {
+    const provisioner = read('scripts/provision-autonomous-windows-actor.ps1');
+    return provisioner.includes("$PSVersionTable.PSEdition -ne 'Desktop'")
+      && provisioner.includes('$PSVersionTable.PSVersion.Major -ne 5')
+      && provisioner.includes('WindowsPowerShell\\v1.0\\powershell.exe')
+      && !/node(?:\.exe)?/i.test(provisioner);
+  }],
+  ['LabVIEW known-answer adapter requires the validated activated verdict', () => read('experiments/mesh-fulfillment/runLabviewKnownAnswer.mjs').includes('if (!validation.activated)')],
   ['every governance-surface file exists', () => GOVERNANCE_SURFACES.every((s) => existsSync(join(repoRoot, s.file)))],
   ['Ubuntu golden lbabus source defaults match the cleanroom manifest', () => validateLbabusProvisioningPin({
     manifest: JSON.parse(read('cleanroom/ubuntu-labview/cleanroom-manifest.json')),
@@ -999,6 +1113,26 @@ const SELFTEST = [
     const wrongPub = assertPublished(q, { publisher: 'other', name: 'ext', version: '1.1.1' });
     const noExt = assertPublished({ results: [{ extensions: [] }] }, { publisher: 'pub', name: 'ext', version: '1.1.1' });
     return absent.ok === false && absent.live === false && wrongPub.ok === false && noExt.ok === false;
+  }],
+  ['release-verify-published (#56) requires the live listing links to name the canonical repository', () => {
+    const repositoryUrl = 'https://github.com/owner/ext';
+    const listing = (links) => ({ results: [{ extensions: [{ publisher: { publisherName: 'pub' }, extensionName: 'ext', versions: [{
+      version: '1.2.0',
+      properties: Object.entries(links).map(([name, value]) => ({ key: `Microsoft.VisualStudio.Services.Links.${name}`, value })),
+    }] }] }] });
+    const good = {
+      Support: `${repositoryUrl}/issues`, Source: `${repositoryUrl}.git`, GitHub: `${repositoryUrl}.git`,
+      Learn: `${repositoryUrl}#readme`, Getstarted: `${repositoryUrl}.git`,
+    };
+    const expected = { version: '1.2.0', repositoryUrl, bugsUrl: `${repositoryUrl}/issues` };
+    const ok = assertListingLinks(listing(good), expected);
+    const retired = assertListingLinks(listing({ ...good, Support: 'https://github.com/old-owner/ext/issues' }), expected);
+    const sibling = assertListingLinks(listing({ ...good, Source: 'https://github.com/owner/ext-fork.git' }), expected);
+    const { Learn: _learn, ...withoutLearn } = good;
+    const missing = assertListingLinks(listing(withoutLearn), expected);
+    const otherVersion = assertListingLinks(listing(good), { ...expected, version: '1.2.1' });
+    return ok.ok && !retired.ok && /Links\.Support/.test(retired.reason) && !sibling.ok && !missing.ok
+      && /no Links\.Learn/.test(missing.reason) && !otherVersion.ok;
   }],
   ['release-cut-github (#412) verifyReleaseAssets passes a complete artifact set + names the tag', () => {
     const r = verifyReleaseAssets(['x/labview-benchmark-actor.vsix', 'x/labview-benchmark-actor.vsix.sigstore', 'x/extension-verdict.json'], { version: '1.2.0' });
