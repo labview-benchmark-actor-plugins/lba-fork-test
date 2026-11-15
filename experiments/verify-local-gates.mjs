@@ -3540,7 +3540,18 @@ check('dod-definition-present', () => {
   const wfText = readFileSync(wf, 'utf8');
   assert(/name:\s*DoD Gate/.test(wfText), 'workflow must publish the "DoD Gate / dod" context (name: DoD Gate + job dod)');
   assert(/job|dod:/.test(wfText) && /verify-local-gates\.mjs/.test(wfText), 'the DoD Gate job must enforce the DoD by running the local gate suite');
-  return { doc: 'docs/dod/definition-of-done.md', context: 'DoD Gate / dod', exitCriteria: 7 };
+  // Every pull request carries the exit criteria as a checklist, named exactly as in the DoD table and in order.
+  const exitCriteria = [...text.matchAll(/^\|\s*\d+\s*\|\s*\*\*([^*]+)\*\*/gm)].map((match) => match[1]);
+  assert(exitCriteria.length === 7, `the DoD exit criteria table must list 7 conditions, found ${exitCriteria.length}`);
+  const template = join(pkgRoot, '.github', 'pull_request_template.md');
+  assert(existsSync(template), 'the pull-request template (.github/pull_request_template.md) must exist');
+  const templateText = readFileSync(template, 'utf8');
+  assert(/^## Definition of Done$/m.test(templateText) && templateText.includes('docs/dod/definition-of-done.md'),
+    'the pull-request template must carry a Definition of Done section that points to the DoD doc');
+  const checklist = [...templateText.matchAll(/^- \[ \] \*\*([^*]+)\*\*/gm)].map((match) => match[1]);
+  assert(JSON.stringify(checklist) === JSON.stringify(exitCriteria),
+    `the pull-request checklist ${JSON.stringify(checklist)} must name the DoD exit criteria ${JSON.stringify(exitCriteria)}`);
+  return { doc: 'docs/dod/definition-of-done.md', context: 'DoD Gate / dod', exitCriteria: exitCriteria.length, prTemplate: '.github/pull_request_template.md' };
 });
 
 // Reproducible .vsix gate (ADR-0066 / LBA-REQ-085): the packaged artifact must be BYTE-REPRODUCIBLE so the

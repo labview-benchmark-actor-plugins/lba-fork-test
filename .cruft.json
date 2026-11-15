@@ -1,0 +1,28 @@
+{
+  "template": "https://github.com/svelderrainruiz/repo-standards-review-consumer-kit",
+  "commit": "fa91bfa878970751c6efb82c5aac1500bc8e6d4c",
+  "checkout": "v0.4.1",
+  "context": {
+    "cookiecutter": {
+      "repo_name": "labview-benchmark-actor",
+      "forge": "github",
+      "github_runs_on": "ubuntu-latest",
+      "default_branches": "main,develop",
+      "gitlab_stage": "test",
+      "script_dirs": "",
+      "lf_paths": "*.py,cleanroom/ubuntu-labview/*.ps1,experiments/multi-vm-topology/**/*.ps1",
+      "exempt_paths": "experiments/mesh-stress-signature/fixtures/win-vm-*.json,experiments/windows-docker-container/evidence/**",
+      "rsr_tag": "v0.4.1",
+      "rsr_commit": "6386084cdb7873db4ca46f8c346d009993bdfcd6",
+      "workbench_image": "registry.gitlab.com/svelderrainruiz/repo-standards-review/assurance-workbench@sha256:c31d824dc6dfb87d5d753077ebb102a458c05bcf106cf3e657b4489fd90d4e9b",
+      "__kit_dir": "labview-benchmark-actor",
+      "_copy_without_render": [
+        ".repo-standards-review/check_consumer.py"
+      ],
+      "_gitattributes": ".gitattributes",
+      "_template": "https://github.com/svelderrainruiz/repo-standards-review-consumer-kit",
+      "_commit": "fa91bfa878970751c6efb82c5aac1500bc8e6d4c"
+    }
+  },
+  "directory": null
+}
