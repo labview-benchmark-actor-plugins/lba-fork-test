@@ -6,18 +6,15 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 
 ## [Unreleased]
 
-## [1.5.2] - Unreleased
+## [1.5.2] - 2026-11-14
 
-### Changed
+1.5.0 and 1.5.1 were not released separately; their changes ship in 1.5.2.
 
-- Move the RSR consumer kit and the governance pin to `repo-standards-review` v0.4.2 (#52, ADR-0087 amended).
-  - `cruft update` applied cleanly: the kit now LF-pins its root files, `.repo-standards-review.json` and
-    `.cruft.json`, as VITechnologies/projectbuddy#280 requested after #51.
-  - The v0.4.2 workbench deep run is byte-identical to the v0.4.1 capture (raw score
-    `9e801f9a…b112`): 25/25, all six gates PASS/High, no contradictions, 319 scripts pinned to LF. Both
-    baselines, `release-components.json`, the agent contract and the stamps now name v0.4.2.
+### Added
 
-## [1.5.1] - Unreleased
+- Pin the absorbed mprr contract to the shared contract mprr publishes (`v0.1.1`, ADR-0086): the vendored file is SHA-256 pinned, and the `mprr-contract-matches-pinned-fixture` gate checks the ring constants, capture-ring packet layout, launch-capture field presence and boot-benchmark schema against it, replacing `mprr-absorbed-constants-match-mprr-spec`.
+- Specify standalone Windows desktop capture with a bounded operator-selected cadence under LBA-REQ-102 / ADR-0085; live qualification remains gated.
+- Pathless active-capture MCP resources are specified under ADR-0084 / LBA-REQ-101; implementation and fixture tests are in progress.
 
 ### Changed
 
@@ -35,14 +32,12 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 - The agent contract scorecard rows must match the retained baseline status and confidence for every gate.
 - Human task bundle v1.0.7: the release-risk evaluator now expects PASS/High/dash for every static gate, DoD
   included.
-
-## [1.5.0] - Unreleased
-
-### Added
-
-- Pin the absorbed mprr contract to the shared contract mprr publishes (`v0.1.1`, ADR-0086): the vendored file is SHA-256 pinned, and the `mprr-contract-matches-pinned-fixture` gate checks the ring constants, capture-ring packet layout, launch-capture field presence and boot-benchmark schema against it, replacing `mprr-absorbed-constants-match-mprr-spec`.
-- Specify standalone Windows desktop capture with a bounded operator-selected cadence under LBA-REQ-102 / ADR-0085; live qualification remains gated.
-- Pathless active-capture MCP resources are specified under ADR-0084 / LBA-REQ-101; implementation and fixture tests are in progress.
+- Move the RSR consumer kit and the governance pin to `repo-standards-review` v0.4.2 (#52, ADR-0087 amended).
+  - `cruft update` applied cleanly: the kit now LF-pins its root files, `.repo-standards-review.json` and
+    `.cruft.json`, as VITechnologies/projectbuddy#280 requested after #51.
+  - The v0.4.2 workbench deep run is byte-identical to the v0.4.1 capture (raw score
+    `9e801f9a…b112`): 25/25, all six gates PASS/High, no contradictions, 319 scripts pinned to LF. Both
+    baselines, `release-components.json`, the agent contract and the stamps now name v0.4.2.
 
 ### Fixed
 
