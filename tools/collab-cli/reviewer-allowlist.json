@@ -162,6 +162,18 @@
       "validFrom": "1.5.2",
       "validThrough": "1.5.2",
       "purposes": ["quorum"]
+    },
+    {
+      "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAVqytkn57+6VMaH4gOaP/DJkERoYiWM4KVmFoc8b8vrQ=\n-----END PUBLIC KEY-----\n",
+      "validFrom": "1.6.0",
+      "validThrough": "1.6.0",
+      "purposes": ["visual"]
+    },
+    {
+      "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEALyhblLpYoGNl4cd87EnbmBg17EIo93a0iuPZCbERXqw=\n-----END PUBLIC KEY-----\n",
+      "validFrom": "1.6.0",
+      "validThrough": "1.6.0",
+      "purposes": ["quorum"]
     }
   ]
 }
