@@ -2,13 +2,13 @@
 
 - Status: Accepted
 - Date: 2026-11-14
-- Amended: 2026-11-15 (the kit and governance pin move to v0.4.2, commit `5a3aa9da`, workbench
+- Amended: 2026-11-14 (the kit and governance pin move to v0.4.2, commit `5a3aa9da`, workbench
   `sha256:913bba59…cfe5`, which LF-pins the kit's root files; the v0.4.2 deep run gives a byte-identical raw
   score, so only the source identity changes, #52)
 - Owner: LINUX
 - Traces to: LBA-REQ-008, LBA-REQ-096
 - Amends: [ADR-0079](ADR-0079-standards-release-risk-overlay.md). The overlay is unchanged; the static
-  baseline it preserves is now the v0.4.1 capture.
+  baseline it preserves is the v0.4.1 capture, re-identified as v0.4.2 by the amendment above.
 
 ## Context
 
