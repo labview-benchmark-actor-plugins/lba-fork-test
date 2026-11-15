@@ -1,6 +1,6 @@
 # labview-benchmark-actor — Configuration Management Plan
 
-> Standards baseline: `repo-standards-review` **v0.2.19** (commit `d44f210d`).
+> Standards baseline: `repo-standards-review` **v0.4.1** (commit `6386084c`).
 > CM follows ISO 10007 (configuration management) and ISO/IEC/IEEE 12207
 > (life-cycle processes). This governs the labview-benchmark-actor package now
 > that it lives in its own dedicated repository (graduated from the
@@ -11,7 +11,7 @@
 | CI | Item | Baseline control |
 | --- | --- | --- |
 | CI-1 | Specification package (`prototype/labview-benchmark-actor/**`) | This CM plan |
-| CI-2 | Standards baseline stamp (`repo-standards-review` v0.2.19) | Bumped only with a coordinated re-validation |
+| CI-2 | Standards baseline stamp (`repo-standards-review` v0.4.1) | Bumped only with a coordinated re-validation |
 | CI-3 | Requirement IDs (`LBA-REQ-NNN`) | Stable; never renumbered on move |
 | CI-4 | Run-result schema, bus message schema | Versioned contracts (frozen per test slice) |
 
@@ -41,11 +41,12 @@ Every merge into a long-lived branch (`main`, `develop`) is `--no-ff`, so shared
 
 ## Standards-release stamp (ISO 10007 identification)
 
-- `repo-standards-review` release: **v0.2.19**
-- Commit: `d44f210d`
+- `repo-standards-review` release: **v0.4.1** (re-certified from v0.2.19 under ADR-0087)
+- Commit: `6386084c`
 - Validation gate to re-run on move or bump:
   `python3 scripts/pipeline.py validate-skill`
-- The stamp is recorded in `README.md` and here; the two must stay in sync.
+- The stamp is recorded in `README.md` and here; the two must stay in sync. The RSR consumer kit's
+  `.repo-standards-review.json` and `release-components.json` `governance` pin the same release.
 
 ## Move / graduation procedure (12207 transition)
 
@@ -54,7 +55,7 @@ Every merge into a long-lived branch (`main`, `develop`) is `--no-ff`, so shared
    the `docs/` lane layout so the standards runner resolves every lane.
 3. Carry `LBA-REQ` IDs unchanged (CI-3) so external traceability survives.
 4. Re-run the `repo-standards-review` validation against the stamped baseline
-   (v0.2.19) — or bump the stamp in `README.md` + this plan together and
+   (v0.4.1) — or bump the stamp in `README.md` + this plan together and
    re-validate.
 5. Retire or redirect the extracted origin in `vi-history-suite` per the
    moved-module manifest (LBA-REQ-001).

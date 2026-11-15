@@ -27,7 +27,7 @@ try {
   assert.equal(files.length, 1);
   const receipt = JSON.parse(readFileSync(path.join(root, files[0]), 'utf8'));
   assert.equal(receipt.schema, 'labview-benchmark-actor/human-task-receipt@1');
-  assert.equal(receipt.taskBundleVersion, '1.0.6');
+  assert.equal(receipt.taskBundleVersion, '1.0.7');
   assert.equal(receipt.extensionVersion, '1.4.9');
   assert.equal(receipt.monotonicClockSource, 'process.hrtime.bigint');
   assert.equal(receipt.outcome, 'FAIL');

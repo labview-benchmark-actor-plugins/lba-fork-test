@@ -1,6 +1,6 @@
 # Information for Users — Conformance Boundary
 
-> Standards baseline: `repo-standards-review` v0.2.19. Aligns to **ISO/IEC/IEEE
+> Standards baseline: `repo-standards-review` v0.4.1. Aligns to **ISO/IEC/IEEE
 > 26514:2022 §4** (conformance) and **§5** (information for users).
 
 This page states, precisely, what the project's information-for-users set does and
