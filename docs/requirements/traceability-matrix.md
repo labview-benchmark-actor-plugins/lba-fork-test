@@ -14,7 +14,7 @@
 | LBA-REQ-005 | Time-indexed picture shown below the benchmark | Proven | §3.4 Viewer | ADR-0002, ADR-0005, ADR-0007, ADR-0009, ADR-0086 | T-005 | 3 |
 | LBA-REQ-006 | Multi-VM Vagrant benchmarking topology | Proven | §3.2 Deployment | ADR-0004 | T-006 | 2 |
 | LBA-REQ-007 | TCP/UDP coordination bus (replaces GitHub Discussion) | Proven | §3.5 Coordination-transport | ADR-0003, ADR-0004, ADR-0008 | T-007 | 1 |
-| LBA-REQ-008 | Standards-baseline stamp and move-readiness | Proven | §3.1 Packaging / boundary | ADR-0010, ADR-0013 | T-008 | 5 |
+| LBA-REQ-008 | Standards-baseline stamp and move-readiness | Proven | §3.1 Packaging / boundary | ADR-0010, ADR-0013, ADR-0087 | T-008 | 5 |
 | LBA-REQ-009 | VM cleanroom image storage via the mprr ring buffer | Proven | §3.3 Actor / run-result | ADR-0009, ADR-0086 | T-009 | 5 |
 | LBA-REQ-010 | Own-run review, host concentration, and the ollama comparison layer | Proven | §3.6 Analysis | ADR-0006, ADR-0008 | T-010 | 16 |
 | LBA-REQ-011 | CPU/RAM/disk usage correlation with a pre/post-trigger window | Proven | §3.6 Analysis | — | T-011 | 30 |
@@ -102,7 +102,7 @@
 | LBA-REQ-093 | The Node-version-pinned reproducible package (reviewed Node equals shipped Node) | Proven | §3.1 Packaging / boundary | ADR-0076 | T-093 | 7 |
 | LBA-REQ-094 | Extension-contributed compound human tasks | Proven | — | ADR-0077 | T-094 | 7 |
 | LBA-REQ-095 | System-level SemVer, task chronology, and canonical distribution | Proven | — | ADR-0078 | T-095 | 24 |
-| LBA-REQ-096 | Standards scorecard release-risk overlay | Proven | — | ADR-0079 | T-096 | 9 |
+| LBA-REQ-096 | Standards scorecard release-risk overlay | Proven | — | ADR-0079, ADR-0087 | T-096 | 9 |
 | LBA-REQ-097 | Experiment lifecycle and local continuous KPI | Proven | — | ADR-0080 | T-097 | 16 |
 | LBA-REQ-098 | Signed autonomous actor protocol | Proven | — | ADR-0081 | T-098 | 6 |
 | LBA-REQ-099 | Persistent lbabus autonomous actor service | Proven | — | ADR-0082 | T-099 | 14 |

@@ -9,7 +9,7 @@ import { spawnInvocation } from './process-command.mjs';
 
 const mode = process.argv[2];
 const workspace = process.cwd();
-const HUMAN_TASKS_VERSION = '1.0.6';
+const HUMAN_TASKS_VERSION = '1.0.7';
 const startedNs = process.hrtime.bigint();
 const startedWallTime = new Date().toISOString();
 const events = [];

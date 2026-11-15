@@ -56,10 +56,13 @@ rather than aspirational.
 
 - **DoD Gate / dod** (`.github/workflows/dod.yml`) publishes the status context and fails the
   change if the local gate suite is not green — i.e., if any exit criterion above is unmet.
+- The pull-request template (`.github/pull_request_template.md`) lists the exit criteria as a
+  checklist that every pull request carries before merge.
 - `experiments/verify-local-gates.mjs` check **`dod-definition-present`** statically verifies
   that this document exists, carries the `DoD Gate / dod` marker, enumerates entry/exit
-  criteria, and is wired to the DoD Gate workflow — so the Definition of Done cannot silently
-  drift or disappear.
+  criteria, and is wired to the DoD Gate workflow. It also verifies that the pull-request
+  template's checklist names exactly these exit criteria, in order. So the Definition of Done
+  cannot silently drift or disappear.
 
 A change that satisfies every applicable exit criterion above has met the **DoD Gate / dod**
 and is releasable.

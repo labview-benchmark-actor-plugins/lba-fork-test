@@ -1,6 +1,6 @@
 # labview-benchmark-actor — Architecture Description
 
-> Standards baseline: `repo-standards-review` v0.2.19. Architecture description
+> Standards baseline: `repo-standards-review` v0.4.1. Architecture description
 > follows ISO/IEC/IEEE 42010 (stakeholders, concerns, viewpoints, views,
 > architecture decisions). It covers the original plan and the capabilities
 > since delivered, each traced to its requirements in the RTM.
@@ -394,6 +394,7 @@ Detailed decisions are recorded as ADRs in [adr/](adr/README.md):
 | [ADR-0084](adr/ADR-0084-active-capture-mcp-resources.md) | Pathless, bounded, read-only MCP resources for active-capture evidence | LINUX |
 | [ADR-0085](adr/ADR-0085-standalone-desktop-capture.md) | Standalone Windows desktop capture with explicit bounded cadence | LINUX |
 | [ADR-0086](adr/ADR-0086-pin-mprr-contract-to-published-fixture.md) | Pin the absorbed mprr contract to mprr's published shared contract | LINUX |
+| [ADR-0087](adr/ADR-0087-recertify-standards-baseline-rsr-consumer-kit.md) | Re-certify the standards baseline at repo-standards-review v0.4.1 through the RSR consumer kit | LINUX |
 | [ADR-0007](adr/ADR-0007-image-derived-timing-binary-strip.md) | Image-derived timing binds to the pixel-decoded binary strip (cross-platform) | WIN |
 | [ADR-0008](adr/ADR-0008-interactive-ollama-drive-mirrored-build-coordination.md) | Interactive host-Ollama drive + mirrored build-coordination over `lbabus` | WIN |
 | [ADR-0009](adr/ADR-0009-absorb-mprr-model-self-owned.md) | Absorb the mprr ring/timing model as self-owned (retire the external `svelderrainruiz/mprr`) | WIN |

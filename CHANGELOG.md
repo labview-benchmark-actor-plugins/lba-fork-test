@@ -6,6 +6,25 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 
 ## [Unreleased]
 
+## [1.5.1] - Unreleased
+
+### Changed
+
+- Re-certify the standards baseline at `repo-standards-review` v0.4.1 (ADR-0087, #50).
+  - The RSR consumer kit now pins the release (`.repo-standards-review.json`, `.cruft.json`), adds its LF
+    checkout rules, and checks the pin against the published release manifest in CI.
+  - `release-components.json`, both retained baselines, and the agent contract name the same release.
+  - The v0.4.1 workbench run scores 25/25 with all six gates PASS. DoD confidence is now High because pull
+    requests carry the Definition of Done checklist.
+- Pull requests carry the seven Definition of Done exit criteria as a checklist, which the
+  `dod-definition-present` gate keeps equal to the DoD table.
+- The VSIX excludes the consumer-kit files (`.cruft.json`, `.repo-standards-review.json`,
+  `.repo-standards-review/`), which are repository governance metadata, and the packaging-leak guard keeps
+  them out so Windows and Linux builds stay byte-identical.
+- The agent contract scorecard rows must match the retained baseline status and confidence for every gate.
+- Human task bundle v1.0.7: the release-risk evaluator now expects PASS/High/dash for every static gate, DoD
+  included.
+
 ## [1.5.0] - Unreleased
 
 ### Added

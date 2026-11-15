@@ -32,6 +32,9 @@ playwright/**
 coverage/**
 .lba/**
 AGENTS.md
+.cruft.json
+.repo-standards-review.json
+.repo-standards-review/**
 .c8rc.json
 coverage-thresholds.json
 release-risk-closeout.json

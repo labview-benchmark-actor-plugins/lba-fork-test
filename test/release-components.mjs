@@ -105,7 +105,8 @@ assert.equal(verifyStagedReleaseMetadata({
 assert.equal(verifyStagedReleaseMetadata({
   staged,
   unstaged: [],
-  previous: { extension: '1.4.7', agents: '0.3.11', lbabus: '0.15.6', humanTasks: '1.0.6', experimentGovernance: '1.0.1' },
+  // The task bundle version is unchanged from the current one, so the staged task change lacks its bump.
+  previous: { extension: '1.4.7', agents: '0.3.11', lbabus: '0.15.6', humanTasks: base.components.humanTasks, experimentGovernance: '1.0.1' },
   current: base.components,
 }).ok, false);
 assert.equal(verifyStagedReleaseMetadata({
