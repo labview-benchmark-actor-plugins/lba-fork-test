@@ -6,6 +6,17 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 
 ## [Unreleased]
 
+## [1.5.2] - Unreleased
+
+### Changed
+
+- Move the RSR consumer kit and the governance pin to `repo-standards-review` v0.4.2 (#52, ADR-0087 amended).
+  - `cruft update` applied cleanly: the kit now LF-pins its root files, `.repo-standards-review.json` and
+    `.cruft.json`, as VITechnologies/projectbuddy#280 requested after #51.
+  - The v0.4.2 workbench deep run is byte-identical to the v0.4.1 capture (raw score
+    `9e801f9a…b112`): 25/25, all six gates PASS/High, no contradictions, 319 scripts pinned to LF. Both
+    baselines, `release-components.json`, the agent contract and the stamps now name v0.4.2.
+
 ## [1.5.1] - Unreleased
 
 ### Changed

@@ -1,6 +1,6 @@
 # Information Item Map
 
-> Standards baseline: `repo-standards-review` v0.4.1. Information items follow
+> Standards baseline: `repo-standards-review` v0.4.2. Information items follow
 > ISO/IEC/IEEE 15289.
 
 ## Scope

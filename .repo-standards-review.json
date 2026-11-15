@@ -1,6 +1,6 @@
 {
     "schema": "rsr/consumer-pin@1",
-    "rsr_tag": "v0.4.1",
-    "rsr_commit": "6386084cdb7873db4ca46f8c346d009993bdfcd6",
-    "workbench_image": "registry.gitlab.com/svelderrainruiz/repo-standards-review/assurance-workbench@sha256:c31d824dc6dfb87d5d753077ebb102a458c05bcf106cf3e657b4489fd90d4e9b"
+    "rsr_tag": "v0.4.2",
+    "rsr_commit": "5a3aa9da4b64bd5cc24cd2c6a21253947bca7575",
+    "workbench_image": "registry.gitlab.com/svelderrainruiz/repo-standards-review/assurance-workbench@sha256:913bba59240fc9981b0fa45decc92a4e9881041b29969030e85b050c46b3cfe5"
 }
