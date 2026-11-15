@@ -32,6 +32,13 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 - The mesh Vagrantfile's typed-peer wiring and the requirements-coverage ledger are now checked by this repository's
   gate suite (`mesh-typed-peer-routing`, `reqs-coverage-ledger`) rather than by the vendored lbabus harness.
 
+### Added
+
+- An Obsidian-ready wiki generated from `docs/` (#64, ADR-0089, LBA-REQ-103). `scripts/build-wiki.mjs` builds a vault
+  with one note per requirement, test item, and decision, linked with plain `[[Page]]` wikilinks; the `wiki-publish`
+  workflow publishes it from `develop` and verifies the published wiki against the generator. Clone
+  `labview-benchmark-actor.wiki.git` and open it as a vault. The `wiki-vault` gate validates the vault.
+
 ## [1.5.2] - 2026-11-14
 
 1.5.0 and 1.5.1 were not released separately; their changes ship in 1.5.2.
