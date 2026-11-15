@@ -1,0 +1,9 @@
+{
+  "name": "lba-marketplace-publish",
+  "private": true,
+  "description": "Pinned Marketplace publishing tool for extension-release.yml (Trusted Publishing over GitHub OIDC). Packaging keeps the repository root's vsce.",
+  "license": "0BSD",
+  "dependencies": {
+    "@vscode/vsce": "4.1.1"
+  }
+}

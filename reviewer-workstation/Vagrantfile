@@ -85,7 +85,7 @@ Vagrant.configure("2") do |config|
     path: "provision.ps1", privileged: true,
     env: {
       "VIHS_REVIEWER_EXT_TAG"    => ENV.fetch("VIHS_REVIEWER_EXT_TAG", "latest"),
-      "VIHS_REVIEWER_REPO"       => ENV.fetch("VIHS_REVIEWER_REPO", "LabVIEW-Community-CI-CD/labview-benchmark-actor"),
+      "VIHS_REVIEWER_REPO"       => ENV.fetch("VIHS_REVIEWER_REPO", "svelderrainruiz/labview-benchmark-actor"),
       "VIHS_REVIEWER_LBABUS_TAG" => ENV.fetch("VIHS_REVIEWER_LBABUS_TAG", "latest"),
     }
 

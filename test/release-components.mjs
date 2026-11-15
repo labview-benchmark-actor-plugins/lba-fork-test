@@ -56,6 +56,16 @@ assert.equal(verifyReleaseComponents({
   ...base,
   packageJson: { ...base.packageJson, scripts: { package: 'vsce package --pre-release --out labview-benchmark-actor.vsix' } },
 }).ok, false);
+// Trusted Publishing publishes with a pinned vsce over OIDC; that is still the stable channel, a pre-release is not.
+assert.equal(verifyReleaseComponents({
+  ...base,
+  releaseWorkflow: 'npx --yes @vscode/vsce@4.1.1 publish --packagePath "$release_dir/x.vsix" --oidc',
+}).ok, true);
+assert.equal(verifyReleaseComponents({
+  ...base,
+  releaseWorkflow: 'npx --yes @vscode/vsce@4.1.1 publish --packagePath "$release_dir/x.vsix" --oidc --pre-release',
+}).ok, false);
+assert.equal(verifyReleaseComponents({ ...base, releaseWorkflow: 'vsce publish --pre-release' }).ok, false);
 
 const falselyPromoted = structuredClone(releaseRiskBaseline);
 for (const row of falselyPromoted.releaseEvidence) {
@@ -114,6 +124,13 @@ assert.equal(verifyStagedReleaseMetadata({
     'reviewer-workstation/composite-release-decision-receipt.json',
     'tools/collab-cli/release-agreement.json',
   ],
+  unstaged: [],
+  previous: base.components,
+  current: base.components,
+}).ok, true);
+// Enrolling a release's reviewer keys is release data, not an lbabus change.
+assert.equal(verifyStagedReleaseMetadata({
+  staged: ['tools/collab-cli/reviewer-allowlist.json'],
   unstaged: [],
   previous: base.components,
   current: base.components,

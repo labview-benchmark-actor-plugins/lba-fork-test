@@ -31,8 +31,11 @@
 2. Bump changed component versions and the extension in `release-components.json`, synchronize
    package/component sources, and stamp `## [X.Y.Z]` in `CHANGELOG.md`. The repository precommit
    hook requires these release metadata files to be staged in their final state.
-3. On the pinned node, build the normalized artifact: `npm run package`. Capture the
-   candidate `commit` and the packaged `vsixSha256`.
+3. On the pinned node, build the normalized artifact: `npm run package`, from a clean
+   `git worktree` of the candidate commit so no ignored local file is packaged (#55). Capture
+   the candidate `commit` and the packaged `vsixSha256`. Packaging fails closed unless every
+   Marketplace link in the packaged manifest names the canonical repository
+   (`scripts/verify-vsix-links.mjs`, #56).
 4. **Re-`npm run package` after every later seal/back-merge commit and assert the sha is
    unchanged** — the packaged file set must not move once reviewed (normalization is
    proven by `scripts/normalize-vsix.mjs`).
@@ -90,6 +93,11 @@ First **discover where your key is + the exact station-bound sign commands** wit
 `scripts/lba.mjs signing-status` (set `LBA_VM_PASS` so it can read the VM's
 `labviewBenchmarkActor.reviewerKeyPath`; it reports the key path + existence, never the
 key material). Then:
+
+> VS Code's extension page shows the Issues and Repository links only from the Marketplace
+> listing. Before publishing it shows the previous release's links, or none when offline, so the
+> reviewer cannot judge them there. The packaged links are gated at step 1.3, and the live
+> listing's links at close-out (#56).
 
 1. **Visual verdict.** Stage the candidate (`stage-local-vsix.ps1`), then point the renderer
    at the target with `reviewer-workstation/render-verdict.sh` (`set-target`, then `collect`
@@ -177,10 +185,12 @@ key material). Then:
    `gh release create ext-vX.Y.Z <assets> --notes-file <changelog section> --target main`
    (an authorized bypass token is needed to push the protected `ext-v*` tag).
 4. Dispatch the workflow again with
-   `-f version=X.Y.Z -f publish_marketplace=true --ref ext-vX.Y.Z`. The job is pinned to the
-   release tag, downloads the canonical
-   release VSIX, requires its SHA-256 to equal the staged VSIX, then publishes it with
-   stable `vsce publish` directly from the downloaded release asset.
+   `-f version=X.Y.Z -f publish_marketplace=true --ref ext-vX.Y.Z`. Its `publish` job waits for the
+   operator to approve the `marketplace` environment deployment, downloads the canonical release VSIX,
+   requires its SHA-256 to equal the staged VSIX, then publishes it with `vsce publish --oidc`
+   (Trusted Publishing; no stored PAT). A tag cut before Trusted Publishing still carries the PAT
+   workflow, so publish such a release with `--ref main`; the SHA-256 check still binds the upload to
+   the canonical release asset.
 
 ## 8. Close out
 
@@ -189,7 +199,8 @@ key material). Then:
 2. Assert `git merge-base --is-ancestor <release-tip> main` **and** `… develop` — the
    release tip is an ancestor of both, so the planes stay in sync.
 3. Re-check the Marketplace listing (the gallery API lags a few minutes) with
-   `npm run lba -- release-verify-published X.Y.Z`. A successful query records
+   `npm run lba -- release-verify-published X.Y.Z`. It also requires every listing link,
+   Issues (`Links.Support`) included, to name the canonical repository (#56). A successful query records
    `~/lba-vm-share/marketplace-verification-X.Y.Z.json`, allowing the resumable driver to
    recognize phase 13 only after the required release-tip back-merge to `develop` is also
    proven. Record the closeout in the regenerated `docs/testing/test-report.md` counts.
@@ -205,5 +216,5 @@ key material). Then:
 | Marketplace verification | `~/lba-vm-share/marketplace-verification-X.Y.Z.json` (host) |
 | Composite receipt (committed) | `reviewer-workstation/composite-release-decision-receipt.json` |
 | Release agreement (committed) | `tools/collab-cli/release-agreement.json` |
-| Marketplace publish credential | `VSCE_PAT` secret (CI) |
+| Marketplace publish credential | none stored: Trusted Publishing policy on the `svelderrainruiz` publisher for `extension-release.yml` + environment `marketplace` |
 | `ext-v*` tag push | an authorized bypass token (protected tag) |

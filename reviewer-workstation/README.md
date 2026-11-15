@@ -241,7 +241,7 @@ them without any menu hunting.
 | `VIHS_REVIEWER_BOX_VMWARE` | `vihs/labview-cleanroom` | VMware box name. |
 | `VIHS_REVIEWER_MEM` | `8192` | Guest memory (MB). |
 | `VIHS_REVIEWER_CPUS` | `4` | Guest vCPUs. |
-| `VIHS_REVIEWER_REPO` | `LabVIEW-Community-CI-CD/labview-benchmark-actor` | Release source for the `.vsix` + `lbabus`. |
+| `VIHS_REVIEWER_REPO` | `svelderrainruiz/labview-benchmark-actor` | Release source for the `.vsix` + `lbabus`. |
 | `VIHS_REVIEWER_EXT_TAG` | `latest` | `ext-v*` tag to install (`latest` = newest gated release). |
 | `VIHS_REVIEWER_LBABUS_TAG` | `latest` | `collab-cli-v*` tag to install (`latest` = newest release). |
 | `VAGRANT_HOME` | Vagrant default | Box store. The verified local VirtualBox registration is in `D:\vagrant-home`. |

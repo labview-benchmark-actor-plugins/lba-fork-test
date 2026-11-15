@@ -2,7 +2,7 @@
 // AGENT LAST GATE -- an automated, agentic pre-vet of the packaged extension that runs BEFORE the human
 // last gate (the reviewer VM). It proves the candidate is publishable so the human reviews something
 // already green, plus the evidence. Publish stays gated behind the human review + the WIN<->LINUX
-// agreement + VSCE_PAT; this gate is the machine pre-flight in front of all of that.
+// agreement + Marketplace Trusted Publishing; this gate is the machine pre-flight in front of all of that.
 //
 // OS-agnostic (Node + `npx vsce`), so it runs identically on the WIN and LINUX planes and can be wired
 // as a REQUIRED pre-publish gate in the release workflow. Emits a verdict receipt and exits non-zero on

@@ -1036,6 +1036,73 @@
               "signature": "36kBj0rI0i9cWk+ScLOM6ENQNf1+oci0bzHN4MySU1e4jZ+XAz5irJr1xz1B1mpOGu9Q5T8SHhZ9pCJr8JcgDA=="
             }
           }
+        },
+        "1.5.2": {
+          "summary": "Extension 1.5.2 stable release: RSR v0.4.2 consumer kit and re-certified standards baseline, canonical repository links",
+          "signoffs": {
+            "WIN": {
+              "agreed": true,
+              "reviewedCommit": "9328747c6574ceff2a7a5ac083cf48d890872aa4",
+              "at": "2026-11-15T07:42:58.961Z",
+              "note": "Reviewer VM staged exact VSIX SHA-256 113ba0f653ee56f785aa0ada619abc7f991e98ef9cfce22e221a13d8a8d9d1b0 and emitted correlated DONE stage-1.5.2-9328747-json."
+            },
+            "LINUX": {
+              "agreed": true,
+              "reviewedCommit": "9328747c6574ceff2a7a5ac083cf48d890872aa4",
+              "at": "2026-11-15T07:42:58.961Z",
+              "note": "Cross-plane corroboration run 43688424233 and attestation b329ded8157cb7922f30419e23411392896d7690c0229fab00e3a1630e6d4e20 passed."
+            }
+          },
+          "visualReview": {
+            "verdict": {
+              "schema": "labview-benchmark-actor/reviewer-verdict@1",
+              "target": {
+                "component": "extension",
+                "version": "1.5.2",
+                "commit": "9328747c6574ceff2a7a5ac083cf48d890872aa4",
+                "vsixSha256": "113ba0f653ee56f785aa0ada619abc7f991e98ef9cfce22e221a13d8a8d9d1b0"
+              },
+              "verdict": "pass",
+              "reviewer": "reviewer@vi-tech.nl",
+              "station": "WINDOWS_VM",
+              "notes": "",
+              "evidence": [
+                {
+                  "kind": "cross-plane-run",
+                  "ref": "43688424233"
+                },
+                {
+                  "kind": "attestation-sha256",
+                  "ref": "b329ded8157cb7922f30419e23411392896d7690c0229fab00e3a1630e6d4e20"
+                },
+                {
+                  "kind": "windows-stage",
+                  "ref": "stage-1.5.2-9328747-json"
+                }
+              ],
+              "renderedAt": "2026-11-15T07:42:15.367Z"
+            },
+            "signOff": {
+              "schema": "labview-benchmark-actor/acg-human-signoff-v1",
+              "subject": {
+                "verdictDigest": "c01cee1fae832ee61890fe1b40524f7f62cef2307a014081194bf1b2ea490c2b",
+                "consensusVerdict": "pass",
+                "target": {
+                  "component": "extension",
+                  "version": "1.5.2",
+                  "commit": "9328747c6574ceff2a7a5ac083cf48d890872aa4",
+                  "vsixSha256": "113ba0f653ee56f785aa0ada619abc7f991e98ef9cfce22e221a13d8a8d9d1b0"
+                }
+              },
+              "reviewer": "reviewer@vi-tech.nl",
+              "decision": "approve",
+              "station": "WINDOWS_VM",
+              "algorithm": "ed25519",
+              "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASTuGk3m37HTulYIpRU8KZIB/w0ZZw8wdIfRel+9hUf4=\n-----END PUBLIC KEY-----\n",
+              "signedAt": "2026-11-15T07:42:15.367Z",
+              "signature": "T4I0L9w45ABOFnvu6rRJZRr777ZB0h9pY9wtyMGyU+QuKxETfeUkgW/6n8A33duhgXCUuMf9wYvFcl7UEjB+AQ=="
+            }
+          }
         }
       }
     }

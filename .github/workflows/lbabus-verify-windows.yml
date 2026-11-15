@@ -1,6 +1,6 @@
 name: lbabus-verify-windows
 
-# Build + (fork-only) publish the LEAN, LabVIEW-less Windows container image that VERIFIES lbabus
+# Build + publish (canonical repository only) the LEAN, LabVIEW-less Windows container image that VERIFIES lbabus
 # (tools/collab-cli/ci/Dockerfile.windows, target `verify`). The image self-verifies at BUILD time
 # (verify-windows.ps1 runs as a RUN gate, so a broken lbabus fails the build) and again on `docker run`
 # (the ENTRYPOINT re-runs the suite), so a green published image carries its own proof.
@@ -9,10 +9,10 @@ name: lbabus-verify-windows
 # Windows runner; GitHub-hosted windows-latest runs Windows containers by default and its Server 2022 base
 # matches the image's windowsservercore-ltsc2022 tag.
 #
-# Publish is FORK-ONLY (mirrors .github/workflows/devcontainer-prebuild.yml): only pushes from the
-# svelderrainruiz fork log in to GHCR and push. On the org repo and on every pull_request the job stops at
-# build-and-verify (no login, no push) -- still a real CI proof the image builds + self-verifies on a clean
-# hosted runner. Seed :latest once (workflow_dispatch or the first fork main push) before consumers pull.
+# Publish happens only from the canonical repository (mirrors .github/workflows/devcontainer-prebuild.yml): only
+# pushes to svelderrainruiz/labview-benchmark-actor log in to GHCR and push. On forks and on every pull_request the
+# job stops at build-and-verify (no login, no push) -- still a real CI proof the image builds + self-verifies on a
+# clean hosted runner. Seed :latest once (workflow_dispatch or the first main push) before consumers pull.
 
 on:
   push:
@@ -38,7 +38,7 @@ concurrency:
 
 jobs:
   build-verify-publish:
-    name: build + verify + publish (fork-only) the Windows lbabus-verify image
+    name: build + verify + publish (canonical repo only) the Windows lbabus-verify image
     runs-on: windows-latest
     permissions:
       contents: read
@@ -47,7 +47,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      # Publish only from the fork; the org repo and all PRs stop at build+verify (no login, no push).
+      # Publish only from the canonical repository; forks and all PRs stop at build+verify (no login, no push).
       - name: Log in to GHCR
         if: github.event_name != 'pull_request' && github.repository == 'svelderrainruiz/labview-benchmark-actor'
         uses: docker/login-action@v3
@@ -84,8 +84,8 @@ jobs:
           docker run --rm "${env:IMAGE}:latest"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      # Push all tags (fork-only).
-      - name: Publish (fork-only)
+      # Push all tags (canonical repository only).
+      - name: Publish (canonical repo only)
         if: github.event_name != 'pull_request' && github.repository == 'svelderrainruiz/labview-benchmark-actor'
         shell: pwsh
         run: |
