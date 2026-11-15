@@ -90,13 +90,26 @@
       "reviewer": "reviewer@vi-tech.nl",
       "station": "WINDOWS_VM",
       "notes": "",
-      "evidence": [],
-      "renderedAt": "2026-11-15T07:32:58.555Z"
+      "evidence": [
+        {
+          "kind": "cross-plane-run",
+          "ref": "43688424233"
+        },
+        {
+          "kind": "attestation-sha256",
+          "ref": "b329ded8157cb7922f30419e23411392896d7690c0229fab00e3a1630e6d4e20"
+        },
+        {
+          "kind": "windows-stage",
+          "ref": "stage-1.5.2-9328747-json"
+        }
+      ],
+      "renderedAt": "2026-11-15T07:42:15.367Z"
     },
     "signOff": {
       "schema": "labview-benchmark-actor/acg-human-signoff-v1",
       "subject": {
-        "verdictDigest": "726f1e4a03e1b5ef3a9b33f709fb595ca044e3774a4a3cc8dfa8b871a962e689",
+        "verdictDigest": "c01cee1fae832ee61890fe1b40524f7f62cef2307a014081194bf1b2ea490c2b",
         "consensusVerdict": "pass",
         "target": {
           "component": "extension",
@@ -110,8 +123,8 @@
       "station": "WINDOWS_VM",
       "algorithm": "ed25519",
       "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASTuGk3m37HTulYIpRU8KZIB/w0ZZw8wdIfRel+9hUf4=\n-----END PUBLIC KEY-----\n",
-      "signedAt": "2026-11-15T07:32:58.556Z",
-      "signature": "TuaF7U8vKGtgR70GAUwpiXbphWwobYgrYoYjR8d0dzSRz5tQBvQqtEf+nW8vwgiMZ7KZJ9N5QhJ8BJrEbsQkAg=="
+      "signedAt": "2026-11-15T07:42:15.367Z",
+      "signature": "T4I0L9w45ABOFnvu6rRJZRr777ZB0h9pY9wtyMGyU+QuKxETfeUkgW/6n8A33duhgXCUuMf9wYvFcl7UEjB+AQ=="
     }
   },
   "reviewerAllowlist": {
@@ -359,5 +372,5 @@
     "compositeReleaseProven": true,
     "reason": "both gates publish for extension 1.5.2: machine quorum + enrolled sign-off (ADR-0018) AND human visual PASS (LBA-REQ-057), bound to the same net-staged candidate"
   },
-  "digest": "bf51f73dae83d925e4b07e4d6c9fa6622b0c5fa3f5c3bf50469d04a2bacee17f"
+  "digest": "991e75cc699ce9a595e14d280924fc145105b953b1296402e14815a903d154a5"
 }
