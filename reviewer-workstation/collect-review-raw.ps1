@@ -13,13 +13,24 @@ $expectedLbabusVersion = [string]$releaseComponents.lbabus
 if ($expectedLbabusVersion -notmatch '^\d+\.\d+\.\d+$') { throw 'release-components.json has no valid lbabus version.' }
 New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
 
+# Hand VBoxManage the password as a private file, never on its command line (visible to other local users).
+$passwordFile = [IO.Path]::GetTempFileName()
+if ($IsLinux -or $IsMacOS) { & chmod 600 $passwordFile } else {
+  $acl = Get-Acl -LiteralPath $passwordFile
+  $acl.SetAccessRuleProtection($true, $false)
+  $acl.SetAccessRule([Security.AccessControl.FileSystemAccessRule]::new([Security.Principal.WindowsIdentity]::GetCurrent().Name, 'FullControl', 'Allow'))
+  Set-Acl -LiteralPath $passwordFile -AclObject $acl
+}
+[IO.File]::WriteAllText($passwordFile, $GuestPassword, [Text.UTF8Encoding]::new($false))
+trap { Remove-Item -LiteralPath $passwordFile -Force -ErrorAction SilentlyContinue; break }
+
 function Copy-GuestFile([string]$Source, [string]$Destination, [switch]$AllowMissing) {
   Remove-Item -LiteralPath $Destination -Force -ErrorAction SilentlyContinue
   $prior = $ErrorActionPreference
   $ErrorActionPreference = 'Continue'
   try {
     $output = @(
-      & VBoxManage guestcontrol $VmName --username $GuestUser --password $GuestPassword `
+      & VBoxManage guestcontrol $VmName --username $GuestUser --passwordfile $passwordFile `
         copyfrom $Source $Destination 2>&1 | ForEach-Object { "$_" }
     )
     $exitCode = $LASTEXITCODE
@@ -69,7 +80,7 @@ if ($safeSettings.reviewerKeyPath) {
   $keyProbe = Join-Path $OutDir 'key-exists.txt'
   $command = "if (Test-Path -LiteralPath '$($safeSettings.reviewerKeyPath.Replace("'", "''"))') { 'YES' } else { 'NO' }"
   $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($command))
-  $keyOutput = & VBoxManage guestcontrol $VmName --username $GuestUser --password $GuestPassword run `
+  $keyOutput = & VBoxManage guestcontrol $VmName --username $GuestUser --passwordfile $passwordFile run `
     --exe 'C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe' --wait-stdout --wait-stderr --timeout=15000 -- `
     -NoLogo -NoProfile -NonInteractive -EncodedCommand $encoded
   $safeSettings.keyExists = @($keyOutput) -contains 'YES'
@@ -84,7 +95,7 @@ if ($safeSettings.reviewerKeyPath) {
 $capabilitiesOut = Join-Path $OutDir 'lbabus-capabilities.txt'
 $capabilitiesErr = Join-Path $OutDir 'lbabus-capabilities.err.txt'
 $capabilitiesProcess = Start-Process VBoxManage -ArgumentList @(
-  'guestcontrol', $VmName, '--username', $GuestUser, '--password', $GuestPassword,
+  'guestcontrol', $VmName, '--username', $GuestUser, '--passwordfile', $passwordFile,
   'run', '--exe', 'C:\lba-tools\lbabus\lbabus.exe',
   '--wait-stdout', '--wait-stderr', '--timeout=30000', '--', 'capabilities'
 ) -PassThru -RedirectStandardOutput $capabilitiesOut -RedirectStandardError $capabilitiesErr
@@ -93,6 +104,8 @@ if ($capabilitiesTimedOut) {
   Stop-Process -Id $capabilitiesProcess.Id -Force -ErrorAction SilentlyContinue
   $capabilitiesProcess.WaitForExit()
 }
+
+Remove-Item -LiteralPath $passwordFile -Force -ErrorAction SilentlyContinue
 
 $screenshot = Join-Path $OutDir 'review-screen.png'
 & VBoxManage controlvm $VmName screenshotpng $screenshot | Out-Null

@@ -40,8 +40,9 @@
 //   provision-windows-actor     install one native PowerShell 5 actor from an elevated Windows guest console
 //   selftest                     self-check this tool (run by the `agent-tooling-selftest` gate)
 
-import { mkdirSync, readFileSync, writeFileSync, existsSync, readdirSync, rmSync } from 'node:fs';
-import { execFileSync } from 'node:child_process';
+import { closeSync, mkdirSync, mkdtempSync, openSync, readFileSync, writeFileSync, existsSync, readdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash, createPrivateKey, createPublicKey, generateKeyPairSync } from 'node:crypto';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import { fileURLToPath } from 'node:url';
@@ -58,7 +59,7 @@ import { validateLbabusProvisioningPin } from './verify-ubuntu-golden-box.mjs';
 import { reviewedVsixSha256 } from './verify-published-vsix.mjs';
 import { decideAutonomousN3 } from '../experiments/mesh-fulfillment/autonomousN3Controller.mjs';
 
-export const ITERATION = 34; // bump when you refine this tool (see the banner above)
+export const ITERATION = 35; // bump when you refine this tool (see the banner above)
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const repoRoot = resolve(here, '..');
@@ -570,7 +571,7 @@ export function signingCommands({ station, reviewerId, reviewerKeyPath, version,
   if (station === STATIONS.VM) {
     // Key lives in the VM -> sign IN the VM. Invoke via `cmd /c` from the repo clone so guestcontrol does not
     // eat node's argv[0] as the main module (the MODULE_NOT_FOUND gotcha to be wrapped by render-quorum.sh, #415).
-    quorum = `VBoxManage guestcontrol actor --username vagrant --password "$LBA_VM_PASS" run --exe 'C:\\Windows\\System32\\cmd.exe' --wait-stdout --wait-stderr -- cmd /c "cd /d C:\\lba-validate\\repo && node reviewer-workstation\\sign-release-quorum.mjs --key ${keyPath} --reviewer ${id} --station WINDOWS_VM --quorum <attestation-${ver}.json> --out <quorum-signoff-${ver}.json>"`;
+    quorum = `VBoxManage guestcontrol actor --username vagrant --passwordfile <(printf %s "$LBA_VM_PASS") run --exe 'C:\\Windows\\System32\\cmd.exe' --wait-stdout --wait-stderr -- cmd /c "cd /d C:\\lba-validate\\repo && node reviewer-workstation\\sign-release-quorum.mjs --key ${keyPath} --reviewer ${id} --station WINDOWS_VM --quorum <attestation-${ver}.json> --out <quorum-signoff-${ver}.json>"`;
   } else {
     // Key lives on this host -> sign on the host directly.
     quorum = `node reviewer-workstation/sign-release-quorum.mjs --key ${keyPath} --reviewer ${id} --station LINUX_CODESPACE --quorum ~/lba-vm-share/attestation-${ver}.json --out ~/lba-vm-share/quorum-signoff-${ver}.json`;
@@ -619,11 +620,27 @@ export function signingStatus({ reviewerId, reviewerKeyPath, keyExists, station,
 // Impure discovery: find the enrolled key + its station. Best-effort + fail-soft (never throws): host env first
 // (LBA_REVIEWER_ID + LBA_REVIEWER_KEY for a host-resident key), then the reviewer VM's VS Code settings.json via
 // `VBoxManage guestcontrol` when LBA_VM_PASS is set + the VM is reachable. Reads only the key PATH, never the key.
+// Runs a command with stdout captured through a file: VBoxManage guestcontrol cannot write guest output into Node's
+// socket pipes ("Error getting stdout handle: VERR_NOT_IMPLEMENTED"), which would leave stdout empty.
+function runCapturingStdout(file, args) {
+  const dir = mkdtempSync(join(tmpdir(), 'lba-run-'));
+  const outPath = join(dir, 'stdout');
+  const out = openSync(outPath, 'w');
+  try {
+    const r = spawnSync(file, args, { stdio: ['ignore', out, 'ignore'] });
+    if (r.status !== 0) throw new Error(`${file} exited ${r.status ?? r.error?.message}`);
+    return readFileSync(outPath, 'utf8');
+  } finally {
+    closeSync(out);
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
 export function discoverSigningStation({ env = process.env, run } = {}) {
   const vm = env.LBA_VM_NAME || 'actor';
   const user = env.LBA_VM_USER || 'vagrant';
   const pass = env.LBA_VM_PASS;
-  const exec = run || ((file, args) => execFileSync(file, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }));
+  const exec = run || runCapturingStdout;
   // 1) explicit host config: an enrolled key that lives on THIS host.
   const hostId = String(env.LBA_REVIEWER_ID || '').trim();
   const hostKey = String(env.LBA_REVIEWER_KEY || '').trim();
@@ -642,10 +659,14 @@ export function discoverSigningStation({ env = process.env, run } = {}) {
   }
   // 2) the reviewer VM: read its VS Code settings.json for reviewerId + reviewerKeyPath, then probe the key.
   if (pass) {
+    // VBoxManage gets the password as a private file, never on its command line (visible to every local user).
+    const secretDir = mkdtempSync(join(tmpdir(), 'lba-vm-'));
+    const passwordFile = join(secretDir, 'vm-pass');
+    writeFileSync(passwordFile, pass, { mode: 0o600 });
     try {
       const settings = `C:\\Users\\${user}\\AppData\\Roaming\\Code\\User\\settings.json`;
       const ps = (inner) => exec('VBoxManage', [
-        'guestcontrol', vm, '--username', user, '--password', pass,
+        'guestcontrol', vm, '--username', user, '--passwordfile', passwordFile,
         'run', '--exe', 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe',
         '--wait-stdout', '--wait-stderr', '--',
         '-NoLogo', '-NoProfile', '-NonInteractive', '-Command', inner,
@@ -676,7 +697,9 @@ export function discoverSigningStation({ env = process.env, run } = {}) {
         }
       }
       return { reviewerId, reviewerKeyPath: reviewerKeyPath || null, keyExists, presentedPublicKey, station: STATIONS.VM, source: `reviewer VM "${vm}" VS Code settings.json` };
-    } catch { /* VM not reachable / VBoxManage absent -> fall through to UNKNOWN */ }
+    } catch { /* VM not reachable / VBoxManage absent -> fall through to UNKNOWN */ } finally {
+      rmSync(secretDir, { recursive: true, force: true });
+    }
   }
   return { reviewerId: '', reviewerKeyPath: null, keyExists: null, station: STATIONS.UNKNOWN, source: 'none (set LBA_VM_PASS for the VM, or LBA_REVIEWER_ID + LBA_REVIEWER_KEY for a host key)' };
 }

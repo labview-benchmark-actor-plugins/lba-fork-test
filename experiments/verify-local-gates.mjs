@@ -3254,6 +3254,41 @@ check('reviewer-version-contract', () => {
   return { source: 'release-components.json', scope: 'Windows/Ubuntu reviewer staging + continuation readiness' };
 });
 
+// #75: the reviewer VM password never reaches VBoxManage on its command line, where every local user can read it
+// (ps, /proc/<pid>/cmdline); scripts hand it over as a private --passwordfile instead. Scans every repository-owned
+// script that drives guestcontrol (the vendored lbabus copy in tools/ is out of scope) and proves the detector
+// with a negative control.
+check('vm-password-not-on-command-line', () => {
+  const flag = ['--pass', 'word'].join(''); // assembled so this gate's own source is not a finding
+  // A value follows the flag: `--flag "$x"`, `--flag $X`, `--flag=x`, or a Node/PowerShell array `'--flag', x`.
+  const valueAfterFlag = new RegExp(`${flag}(?!file)(?:\\s+|=|['"]\\s*,\\s*)["'$A-Za-z_]`);
+  const findings = (text) => text.split(/\r?\n/).map((line, i) => [i + 1, line]).filter(([, line]) => valueAfterFlag.test(line));
+  const control = [
+    `gc() { VBoxManage guestcontrol "$vm" --username "$user" ${flag} "$pass" "$@"; }`,
+    `& VBoxManage guestcontrol $VmName --username $GuestUser ${flag} $GuestPassword run`,
+    `'guestcontrol', vm, '--username', user, '${flag}', pass,`,
+  ].join('\n');
+  assert(findings(control).length === 3, 'the password detector must flag the shell, PowerShell, and Node forms');
+  assert(findings(`VBoxManage guestcontrol vm --username u ${flag}file "$pwfile" run`).length === 0, 'the detector must allow --passwordfile');
+  assert(findings(`assert.ok(!args.includes('${flag}') && args.includes('${flag}file'));`).length === 0, 'the detector must allow a negative assertion about the flag');
+  const roots = ['reviewer-workstation', 'scripts', 'cleanroom', 'experiments', '.github'];
+  const scriptFile = /(\.(sh|ps1|psm1|mjs|cjs|js|yml|yaml)|Vagrantfile)$/;
+  const walk = (dir) => readdirSync(join(pkgRoot, dir), { withFileTypes: true }).flatMap((e) => {
+    const rel = `${dir}/${e.name}`;
+    if (e.isDirectory()) return ['node_modules', '.git', 'bin', 'obj'].includes(e.name) ? [] : walk(rel);
+    return scriptFile.test(e.name) ? [rel] : [];
+  });
+  const scanned = roots.filter((r) => existsSync(join(pkgRoot, r))).flatMap(walk);
+  const offenders = [];
+  for (const rel of scanned) {
+    const text = readFileSync(join(pkgRoot, rel), 'utf8');
+    if (!text.includes('guestcontrol')) continue;
+    for (const [line] of findings(text)) offenders.push(`${rel}:${line}`);
+  }
+  assert(offenders.length === 0, `VM password passed on a VBoxManage command line (use --passwordfile): ${offenders.join(', ')}`);
+  return { scanned: scanned.length, guestcontrolScripts: scanned.filter((rel) => readFileSync(join(pkgRoot, rel), 'utf8').includes('guestcontrol')).length };
+});
+
 // LBA-REQ-069 (#73): release phase 7 in one command. The driver stages the exact candidate on the WIN reviewer VM,
 // proves the VM holds those bytes, confirms the install, configures the per-version visual key, records the
 // correlated DONE frame, and binds the review target to the attestation evidence. The offline selftest drives it
