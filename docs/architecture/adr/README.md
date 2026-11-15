@@ -1,6 +1,6 @@
 # Architecture Decision Records — labview-benchmark-actor
 
-> Standards baseline: `repo-standards-review` v0.4.1. ADRs support the 42010
+> Standards baseline: `repo-standards-review` v0.4.2. ADRs support the 42010
 > architecture description. Format: Status / Context / Decision / Consequences /
 > Traces-to.
 

@@ -51,7 +51,7 @@ The multi-year vision and near-term slice live in the [roadmap](https://github.c
 
 **Absorbed model:** the bounded-RAM `mprr` ring-buffer model (dual-packet policy + a frozen replay transport) is absorbed in-repo as dependency-free mirrors — the project owns it and tracks no external repository ([ADR-0009](https://github.com/svelderrainruiz/labview-benchmark-actor/blob/main/docs/architecture/adr/ADR-0009-absorb-mprr-model-self-owned.md)).
 
-**Standards baseline:** re-certified against `repo-standards-review` **v0.4.1** (commit `6386084c`, ADR-0087).
+**Standards baseline:** re-certified against `repo-standards-review` **v0.4.2** (commit `5a3aa9da`, ADR-0087).
 
 ## Contributing & support
 
