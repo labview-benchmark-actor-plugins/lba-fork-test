@@ -20,6 +20,7 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
+import { reportVsixLinks } from './verify-vsix-links.mjs';
 
 const SIG_LOCAL = 0x04034b50;
 const SIG_CENTRAL = 0x02014b50;
@@ -84,4 +85,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const path = process.argv[2] || 'labview-benchmark-actor.vsix';
   const n = normalizeVsix(path);
   console.log(`normalize-vsix: normalized ${n} entries in ${path} (timestamps + mode + version -> cross-plane reproducible)`);
+  // The packaged Marketplace links are what the listing shows; refuse a package that points anywhere else (#56).
+  if (!reportVsixLinks(path)) process.exit(1);
 }

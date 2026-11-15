@@ -28,6 +28,7 @@ import { projectViewerSeries, seriesHash } from './mprr-ring/mprrViewerSeries.mj
 import { correlateDualStream } from './mprr-ring/mprrDualPacket.mjs';
 import { summarizeViAnalyzerReport } from './vi-analyzer/viAnalyzerResult.mjs';
 import { validateViAnalyzerReport } from './vi-analyzer/validate-vi-analyzer-report.mjs';
+import { checkVsixLinks, REQUIRED_LINKS } from '../scripts/verify-vsix-links.mjs';
 import { parseAsciiReport, parseSummary } from './vi-analyzer/parse-vi-analyzer-ascii.mjs';
 import { verifyManifest as verifyExtensionAgentsManifest, agentsSha256, readManifest as readExtensionAgentsManifest, AGENTS_MD as EXTENSION_AGENTS_MD } from '../scripts/agentsManifest.mjs';
 import { normalizeZipTimestamps } from '../scripts/normalize-vsix.mjs';
@@ -1627,6 +1628,30 @@ check('release-component-versioning', () => {
   assert(releaseCli.includes("purpose: 'quorum'") && releaseCli.includes('no quorum key enrolled'), 'signing readiness is not version/quorum scoped');
   assert(experimentGovernance.version === versions.experimentGovernance, 'experiment-governance version drifted');
   return { extension: versions.extension, agents: versions.agents, lbabus: versions.lbabus, humanTasks: versions.humanTasks };
+});
+
+check('vsix-marketplace-links', () => {
+  // #56: the Marketplace listing and VS Code's extension page show the packaged manifest's Links.*, so packaging
+  // must refuse any link outside the canonical repository (1.4.14 shipped Issues pointing at a retired owner).
+  const normalize = readFileSync(join(pkgRoot, 'scripts', 'normalize-vsix.mjs'), 'utf8');
+  assert(/if \(!reportVsixLinks\(path\)\) process\.exit\(1\);/.test(normalize), 'npm run package must fail closed on the Marketplace link check');
+  const pkg = JSON.parse(readFileSync(join(pkgRoot, 'package.json'), 'utf8'));
+  const repo = pkg.repository.url.replace(/\.git$/, '');
+  const manifest = (links) => Object.entries(links)
+    .map(([name, value]) => `<Property Id="Microsoft.VisualStudio.Services.Links.${name}" Value="${value}" />`).join('\n');
+  const good = { Source: `${repo}.git`, Getstarted: `${repo}.git`, GitHub: `${repo}.git`, Support: `${repo}/issues`, Learn: `${repo}#readme` };
+  assert(REQUIRED_LINKS.every((name) => good[name]), 'the fixture must cover every required link');
+  const pass = checkVsixLinks({ manifestXml: manifest(good), packageJson: pkg, texts: { 'extension/readme.md': 'ok' } });
+  assert(pass.ok, `a canonical manifest must pass: ${pass.findings.join('; ')}`);
+  const fails = {
+    'retired Support owner': checkVsixLinks({ manifestXml: manifest({ ...good, Support: 'https://github.com/LabVIEW-Community-CI-CD/labview-benchmark-actor/issues' }), packageJson: pkg }),
+    'sibling repository': checkVsixLinks({ manifestXml: manifest({ ...good, Source: `${repo}-fork.git` }), packageJson: pkg }),
+    'missing Learn link': checkVsixLinks({ manifestXml: manifest({ ...good, Learn: '' }), packageJson: pkg }),
+    'retired owner in packaged text': checkVsixLinks({ manifestXml: manifest(good), packageJson: pkg, texts: { 'extension/readme.md': 'see LabVIEW-Community-CI-CD' } }),
+    'bugs.url off the repository': checkVsixLinks({ manifestXml: manifest(good), packageJson: { ...pkg, bugs: { url: 'https://example.com/issues' } } }),
+  };
+  for (const [name, result] of Object.entries(fails)) assert(!result.ok, `the link check must reject a ${name}`);
+  return { canonical: repo, rejected: Object.keys(fails).length };
 });
 
 check('standards-release-risk-baseline', () => {
