@@ -6,6 +6,19 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 
 ## [Unreleased]
 
+## [1.6.1] - Unreleased
+
+### Changed
+
+- Move the RSR consumer kit and the governance pin to `repo-standards-review` v0.6.0
+  (VITechnologies/projectbuddy#332, ADR-0087 amended).
+  - `cruft update` applied cleanly. The kit's rules are unchanged for this repository.
+  - The v0.6.0 workbench deep run scores 25/25, with all six gates PASS/High, DoD 5/5 and no contradictions.
+    Its raw score is byte-identical to a v0.4.2 workbench run on the same tree, so the standard's scoring is
+    unchanged. The static baseline is re-captured as raw score `46e48d9a…a265` because this repository changed
+    since the 2026-11-14 capture.
+  - Both baselines, `release-components.json`, the agent contract (0.3.22) and the stamps now name v0.6.0.
+
 ## [1.6.0] - 2026-11-15
 
 1.5.2 was released on GitHub (`ext-v1.5.2`) but not published to the Marketplace; 1.6.0 replaces it there.

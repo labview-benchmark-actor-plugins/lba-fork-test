@@ -5,10 +5,15 @@
 - Amended: 2026-11-14 (the kit and governance pin move to v0.4.2, commit `5a3aa9da`, workbench
   `sha256:913bba59…cfe5`, which LF-pins the kit's root files; the v0.4.2 deep run gives a byte-identical raw
   score, so only the source identity changes, #52)
+- Amended: 2026-11-16 (the kit and governance pin move to v0.6.0, commit `d25cfc16`, workbench
+  `sha256:6283bb7d…1890`; the static baseline is re-captured on the current tree as raw score `46e48d9a…a265`,
+  which is still 25/25 with six PASS/High gates, DoD 5/5 and no contradictions. A control run of the v0.4.2
+  workbench on the same tree gives a byte-identical raw score, so the hash change comes from this repository's
+  own evolution since 2026-11-14, not from the standard; VITechnologies/projectbuddy#332)
 - Owner: LINUX
 - Traces to: LBA-REQ-008, LBA-REQ-096
 - Amends: [ADR-0079](ADR-0079-standards-release-risk-overlay.md). The overlay is unchanged; the static
-  baseline it preserves is the v0.4.1 capture, re-identified as v0.4.2 by the amendment above.
+  baseline it preserves is the v0.6.0 re-capture recorded by the 2026-11-16 amendment above.
 
 ## Context
 
