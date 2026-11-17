@@ -10,10 +10,17 @@
   which is still 25/25 with six PASS/High gates, DoD 5/5 and no contradictions. A control run of the v0.4.2
   workbench on the same tree gives a byte-identical raw score, so the hash change comes from this repository's
   own evolution since 2026-11-14, not from the standard; VITechnologies/projectbuddy#332)
+- Amended: 2026-11-16 (the kit and governance pin move to v0.8.0, commit `d4d022b9`, workbench
+  `sha256:068e5d58…a551`; v0.8.0 adds the ecosystem wiki standard `@3` and `@4`, which are test-page content
+  rules, with no layout or finding changes. The v0.8.0 deep run on the current tree gives a raw score
+  byte-identical to the v0.6.0 re-capture (`46e48d9a…a265`): 25/25, six PASS/High gates, DoD 5/5 and no
+  contradictions. A control run of the v0.6.0 workbench on the same tree gives the same bytes, so neither the
+  standard nor this repository changed the score, and only the source identity changes;
+  VITechnologies/projectbuddy#346)
 - Owner: LINUX
 - Traces to: LBA-REQ-008, LBA-REQ-096
 - Amends: [ADR-0079](ADR-0079-standards-release-risk-overlay.md). The overlay is unchanged; the static
-  baseline it preserves is the v0.6.0 re-capture recorded by the 2026-11-16 amendment above.
+  baseline it preserves is the v0.6.0 re-capture, re-identified as v0.8.0 by the last amendment above.
 
 ## Context
 
