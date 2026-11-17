@@ -53,7 +53,7 @@ The same documentation is published as an Obsidian-ready [wiki](https://github.c
 
 **Absorbed model:** the bounded-RAM `mprr` ring-buffer model (dual-packet policy + a frozen replay transport) is absorbed in-repo as dependency-free mirrors — the project owns it and tracks no external repository ([ADR-0009](https://github.com/svelderrainruiz/labview-benchmark-actor/blob/main/docs/architecture/adr/ADR-0009-absorb-mprr-model-self-owned.md)).
 
-**Standards baseline:** re-certified against `repo-standards-review` **v0.6.0** (commit `d25cfc16`, ADR-0087).
+**Standards baseline:** re-certified against `repo-standards-review` **v0.8.0** (commit `d4d022b9`, ADR-0087).
 
 ## Contributing & support
 
