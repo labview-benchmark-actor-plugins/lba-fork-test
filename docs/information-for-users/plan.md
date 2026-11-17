@@ -10,7 +10,7 @@
   actors.
 - **Claim:** the bounded information-product set in the
   [Conformance Boundary](./conformance-boundary.md).
-- **Baseline:** `repo-standards-review` v0.8.0.
+- **Baseline:** `repo-standards-review` v0.9.0.
 
 ## Audiences and tasks
 
