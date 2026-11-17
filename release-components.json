@@ -1,17 +1,17 @@
 {
   "schema": "labview-benchmark-actor/release-components@1",
-  "extension": "1.6.2",
-  "agents": "0.3.23",
+  "extension": "1.6.3",
+  "agents": "0.3.24",
   "lbabus": "0.16.0",
   "humanTasks": "1.0.7",
   "experimentGovernance": "1.0.1",
   "canonicalDistribution": "github-release",
   "marketplaceChannel": "stable",
   "governance": {
-    "standardsReviewVersion": "0.8.0",
-    "standardsReviewCommit": "d4d022b92f1c5a8bedd4995aab8ca6d65b678e93",
+    "standardsReviewVersion": "0.9.0",
+    "standardsReviewCommit": "8306ebc717e9aac033cfaef2b8bbe2d5374cdf41",
     "workbenchImage": "registry.gitlab.com/svelderrainruiz/repo-standards-review/assurance-workbench",
-    "workbenchDigest": "sha256:068e5d584c4c673285959bcbaa2a75dc226ecd1fe50576d0dae7e424d13da551",
+    "workbenchDigest": "sha256:22a05f23113b96e5239d5d9d9c7709a1536560d099ed778761d066fd86a63582",
     "standardsRootDefault": "C:\\design\\standards",
     "releaseRisk": {
       "present": 12,
