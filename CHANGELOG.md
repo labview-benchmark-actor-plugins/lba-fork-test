@@ -6,6 +6,23 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 
 ## [Unreleased]
 
+## [1.6.4] - Unreleased
+
+### Changed
+
+- Move the RSR consumer kit and the governance pin to `repo-standards-review` v0.10.0
+  (VITechnologies/projectbuddy#364, #84, ADR-0087 amended).
+  - `cruft update` applied cleanly. It adds the kit's reference observation checker,
+    `.repo-standards-review/observations.py` (SHA-256 `816d10c9…c585`), which CI does not run and which
+    `.vscodeignore` already keeps out of the VSIX. The kit's rules are unchanged for this repository. v0.10.0 moves
+    the ecosystem wiki standard to `@6`: test-case items in a test page's observation name the runner's test cases
+    verbatim, and a new observation check, outside conformance, has three findings. There are no layout or
+    scoring changes.
+  - The v0.10.0 workbench deep run scores 25/25, with all six gates PASS/High, DoD 5/5 and no contradictions.
+    Its raw score `46e48d9a…a265` is byte-identical to the v0.6.0 re-capture, and a v0.9.0 workbench control run
+    on the same tree gives the same bytes, so the score is unchanged and only the source identity moves.
+  - Both baselines, `release-components.json`, the agent contract (0.3.25) and the stamps now name v0.10.0.
+
 ## [1.6.3] - Unreleased
 
 ### Changed

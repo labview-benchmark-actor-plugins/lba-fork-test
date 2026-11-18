@@ -25,10 +25,19 @@
   contradictions. A control run of the v0.8.0 workbench on the same tree gives the same bytes, so neither the
   standard nor this repository changed the score, and only the source identity changes;
   VITechnologies/projectbuddy#348)
+- Amended: 2026-11-18 (the kit and governance pin move to v0.10.0, commit `2065a7de`, workbench
+  `sha256:da37a471…b793`; v0.10.0 moves the ecosystem wiki standard to `@6`, whose test-case items name the
+  runner's test cases verbatim and whose new observation check, outside conformance, has three findings. The kit
+  adds its reference observation checker, `.repo-standards-review/observations.py`, which CI does not run and the
+  VSIX excludes. RSR changed no scoring script, so there are no layout, finding or score changes for this
+  repository. The v0.10.0 deep run on the current tree gives a raw score byte-identical to the v0.6.0 re-capture
+  (`46e48d9a…a265`): 25/25, six PASS/High gates, DoD 5/5 and no contradictions. A control run of the v0.9.0
+  workbench on the same tree gives the same bytes, so neither the standard nor this repository changed the score,
+  and only the source identity changes; VITechnologies/projectbuddy#364, #84)
 - Owner: LINUX
 - Traces to: LBA-REQ-008, LBA-REQ-096
 - Amends: [ADR-0079](ADR-0079-standards-release-risk-overlay.md). The overlay is unchanged; the static
-  baseline it preserves is the v0.6.0 re-capture, re-identified as v0.9.0 by the last amendment above.
+  baseline it preserves is the v0.6.0 re-capture, re-identified as v0.10.0 by the last amendment above.
 
 ## Context
 

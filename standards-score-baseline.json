@@ -1,11 +1,11 @@
 {
   "schema": "labview-benchmark-actor/standards-score-baseline@1",
-  "capturedAt": "2026-11-17T08:20:16.000Z",
+  "capturedAt": "2026-11-18T09:34:36.000Z",
   "source": {
-    "workbenchVersion": "0.9.0",
+    "workbenchVersion": "0.10.0",
     "scoreSchema": "1.3.0",
-    "standardsReviewCommit": "8306ebc717e9aac033cfaef2b8bbe2d5374cdf41",
-    "workbenchDigest": "sha256:22a05f23113b96e5239d5d9d9c7709a1536560d099ed778761d066fd86a63582",
+    "standardsReviewCommit": "2065a7de48bd7e510c1371c85c9b34eab2f55ba9",
+    "workbenchDigest": "sha256:da37a471eea8257baebf16295d4a82e752a910ddacb8713ef96d3a521d06b793",
     "profile": "release-gate",
     "depth": "deep",
     "rawScoreSha256": "46e48d9a8cd5c5e13ff12af9844ae867d3456b26e6425ad456acf4d98590a265"
