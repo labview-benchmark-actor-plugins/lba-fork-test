@@ -34,10 +34,22 @@
   (`46e48d9a…a265`): 25/25, six PASS/High gates, DoD 5/5 and no contradictions. A control run of the v0.9.0
   workbench on the same tree gives the same bytes, so neither the standard nor this repository changed the score,
   and only the source identity changes; VITechnologies/projectbuddy#364, #84)
+- Amended: 2026-11-18 (the kit and governance pin move to v0.11.0, commit `6fefbc25`, workbench
+  `sha256:9ed6423b…8df2`; v0.11.0 moves the ecosystem wiki standard to `@7`, whose test-case items may name only a
+  test file, which then requires every test case of that file to pass, and which counts a test file that its
+  runner cannot load as one failing `(load error)` test case. The kit's reference observation checker,
+  `.repo-standards-review/observations.py`, now reads pytest JUnit reports, adds a `stimulus` command and refuses
+  document types and entity declarations in reports; CI still does not run it and the VSIX excludes it. RSR changed
+  no scoring script (in `scripts/`, only the observation check `eval_test_observations.py` changed), so there are
+  no layout, finding or score changes for this repository. The v0.11.0 deep run on the current tree gives a raw
+  score byte-identical to the v0.6.0 re-capture (`46e48d9a…a265`): 25/25, six PASS/High gates, DoD 5/5 and no
+  contradictions. A control run of the v0.10.0 workbench on the same tree gives the same bytes, so neither the
+  standard nor this repository changed the score, and only the source identity changes;
+  VITechnologies/projectbuddy#369, #86)
 - Owner: LINUX
 - Traces to: LBA-REQ-008, LBA-REQ-096
 - Amends: [ADR-0079](ADR-0079-standards-release-risk-overlay.md). The overlay is unchanged; the static
-  baseline it preserves is the v0.6.0 re-capture, re-identified as v0.10.0 by the last amendment above.
+  baseline it preserves is the v0.6.0 re-capture, re-identified as v0.11.0 by the last amendment above.
 
 ## Context
 

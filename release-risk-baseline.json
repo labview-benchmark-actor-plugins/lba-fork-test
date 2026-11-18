@@ -1,12 +1,12 @@
 {
   "schema": "labview-benchmark-actor/release-risk-baseline@1",
-  "releaseVersion": "1.6.4",
-  "assessedAt": "2026-11-18T09:34:36.000Z",
+  "releaseVersion": "1.6.5",
+  "assessedAt": "2026-11-18T14:57:29.000Z",
   "source": {
-    "workbenchVersion": "0.10.0",
+    "workbenchVersion": "0.11.0",
     "scoreSchema": "1.3.0",
-    "standardsReviewCommit": "2065a7de48bd7e510c1371c85c9b34eab2f55ba9",
-    "workbenchDigest": "sha256:da37a471eea8257baebf16295d4a82e752a910ddacb8713ef96d3a521d06b793",
+    "standardsReviewCommit": "6fefbc255ae7b61a1a582beb2a36d49fb210f8b1",
+    "workbenchDigest": "sha256:9ed6423b26381af605dbcc4fe961164d787ac6d8e278be399528cdb571d48df2",
     "scoreBaseline": "standards-score-baseline.json",
     "rawScoreSha256": "46e48d9a8cd5c5e13ff12af9844ae867d3456b26e6425ad456acf4d98590a265",
     "profile": "release-gate",
