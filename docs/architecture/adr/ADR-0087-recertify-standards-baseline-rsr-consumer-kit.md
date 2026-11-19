@@ -46,10 +46,16 @@
   contradictions. A control run of the v0.10.0 workbench on the same tree gives the same bytes, so neither the
   standard nor this repository changed the score, and only the source identity changes;
   VITechnologies/projectbuddy#369, #86)
+- Amended: 2026-11-19 (the kit and governance pin move to v0.12.0, commit `49dfa312`, workbench
+  `sha256:1b6e639e…a241`. The v0.12.0 deep run (`release-gate`, standards corpus mounted read-only) on the current
+  tree was measured with `score.json` SHA-256 `46e48d9a…a265`, byte-identical to the v0.6.0 re-capture: 25/25, six
+  PASS/High gates, DoD 5/5 and no contradictions. No control run of an earlier workbench was made for this
+  amendment; the score is unchanged against the retained baseline, and only the source identity moves;
+  VITechnologies/projectbuddy#387)
 - Owner: LINUX
 - Traces to: LBA-REQ-008, LBA-REQ-096
 - Amends: [ADR-0079](ADR-0079-standards-release-risk-overlay.md). The overlay is unchanged; the static
-  baseline it preserves is the v0.6.0 re-capture, re-identified as v0.11.0 by the last amendment above.
+  baseline it preserves is the v0.6.0 re-capture, re-identified as v0.12.0 by the last amendment above.
 
 ## Context
 
