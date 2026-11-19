@@ -18,6 +18,11 @@ follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project
 
 ### Changed
 
+- Move the governance pin to `repo-standards-review` v0.12.0 (VITechnologies/projectbuddy#387, ADR-0087 amended).
+  - The v0.12.0 workbench deep run (measured here) scores 25/25, with all six gates PASS/High, DoD 5/5 and no
+    contradictions. Its raw score `46e48d9a…a265` is byte-identical to the retained baseline, so only the source
+    identity moves. Both baselines, `release-components.json`, the agent contract (0.3.27) and the stamps name v0.12.0.
+
 - Move the RSR consumer kit and the governance pin to `repo-standards-review` v0.11.0
   (VITechnologies/projectbuddy#369, #86, ADR-0087 amended).
   - `cruft update` applied cleanly. It updates the kit's reference observation checker,
